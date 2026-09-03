@@ -1,0 +1,17 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Application/Application.csproj" />
+    <Project Path="src/CAApplication/CAApplication.csproj" />
+    <Project Path="src/DesktopApp/DesktopApp.csproj" />
+    <Project Path="src/Domain/Domain.csproj" />
+    <Project Path="src/Infrastructure/Infrastructure.csproj" />
+    <Project Path="src/Licensing/Licensing.csproj" />
+    <Project Path="src/Printing/Printing.csproj" />
+    <Project Path="src/Reporting/Reporting.csproj" />
+    <Project Path="src/Security/Security.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/IntegrationTests/IntegrationTests.csproj" />
+    <Project Path="tests/UnitTests/UnitTests.csproj" />
+  </Folder>
+</Solution>
