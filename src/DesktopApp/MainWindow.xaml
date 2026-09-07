@@ -937,8 +937,8 @@
 
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="18"/>
-                        <ColumnDefinition Width="380"/>
+                        <ColumnDefinition Width="16"/>
+                        <ColumnDefinition Width="460" MinWidth="420" MaxWidth="520"/>
                     </Grid.ColumnDefinitions>
 
                     <!-- Left: Inventory Table -->
@@ -981,13 +981,14 @@
                                       RowHeight="40">
                                 <DataGrid.Columns>
                                     <DataGridTextColumn Header="NAME" Binding="{Binding Name}" Width="*"/>
-                                    <DataGridTextColumn Header="SKU / BARCODE" Binding="{Binding SKU}" Width="110"/>
-                                    <DataGridTextColumn Header="HSN" Binding="{Binding HSNCode}" Width="80"/>
-                                    <DataGridTextColumn Header="BUY RATE" Binding="{Binding PurchasePrice, StringFormat='₹{0:N2}'}" Width="90"/>
-                                    <DataGridTextColumn Header="SELL RATE" Binding="{Binding SellingPrice, StringFormat='₹{0:N2}'}" Width="90"/>
-                                    <DataGridTextColumn Header="GST" Binding="{Binding GSTRate, StringFormat='{}{0}%'}" Width="60"/>
-                                    <DataGridTextColumn Header="STOCK" Binding="{Binding CurrentStock}" Width="70"/>
-                                    <DataGridTemplateColumn Header="STOCK CONTROLS" Width="140">
+                                    <DataGridTextColumn Header="ITEM CODE / SKU" Binding="{Binding SKU}" Width="110"/>
+                                    <DataGridTextColumn Header="BARCODE" Binding="{Binding Barcode}" Width="100"/>
+                                    <DataGridTextColumn Header="HSN" Binding="{Binding HSNCode}" Width="75"/>
+                                    <DataGridTextColumn Header="BUY RATE" Binding="{Binding PurchasePrice, StringFormat='₹{0:N2}'}" Width="85"/>
+                                    <DataGridTextColumn Header="SELL RATE" Binding="{Binding SellingPrice, StringFormat='₹{0:N2}'}" Width="85"/>
+                                    <DataGridTextColumn Header="GST" Binding="{Binding GSTRate, StringFormat='{}{0}%'}" Width="55"/>
+                                    <DataGridTextColumn Header="STOCK" Binding="{Binding CurrentStock}" Width="65"/>
+                                    <DataGridTemplateColumn Header="STOCK CONTROLS" Width="130">
                                         <DataGridTemplateColumn.CellTemplate>
                                             <DataTemplate>
                                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
@@ -1006,20 +1007,20 @@
                     <Border Grid.Column="2" Style="{StaticResource ModernCard}" Padding="20">
                         <ScrollViewer VerticalScrollBarVisibility="Auto">
                             <StackPanel>
-                                <TextBlock Text="➕ ADD NEW PRODUCT / MEDICINE" Foreground="{StaticResource AccentCyanBrush}" FontSize="14" FontWeight="Bold" Margin="0,0,0,14"/>
+                                <TextBlock Text="➕ ADD NEW PRODUCT / MEDICINE" Foreground="{StaticResource AccentCyanBrush}" FontSize="15" FontWeight="Bold" Margin="0,0,0,14"/>
 
                                 <!-- Category Dropdown -->
                                 <Grid Margin="0,0,0,3">
-                                    <TextBlock Text="Product Category *" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" VerticalAlignment="Center"/>
-                                    <Button Content="⚙️ Manage / Switch Preset" Background="Transparent" Foreground="{StaticResource AccentCyanBrush}" BorderThickness="0" Padding="4,0" FontSize="10" FontWeight="Bold" HorizontalAlignment="Right" Command="{Binding OpenManageCategoriesModalCommand}"/>
+                                    <TextBlock Text="Product Category *" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                    <Button Content="⚙️ Manage / Switch Preset" Background="Transparent" Foreground="{StaticResource AccentCyanBrush}" BorderThickness="0" Padding="4,0" FontSize="10" FontWeight="Bold" HorizontalAlignment="Right" Cursor="Hand" Command="{Binding OpenManageCategoriesModalCommand}"/>
                                 </Grid>
-                                <ComboBox ItemsSource="{Binding AvailableCategories}" SelectedItem="{Binding SelectedCategory}" Style="{StaticResource ModernComboBox}" Height="38" Margin="0,0,0,10"/>
+                                <ComboBox ItemsSource="{Binding AvailableCategories}" SelectedItem="{Binding SelectedCategory}" Style="{StaticResource ModernComboBox}" Height="38" FontSize="12" Margin="0,0,0,10" ToolTip="{Binding SelectedCategory}"/>
 
                                 <!-- Product Name -->
-                                <TextBlock Text="Product / Medicine Name *" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" Margin="0,0,0,3"/>
-                                <TextBox Text="{Binding NewProductName, UpdateSourceTrigger=PropertyChanged}" Tag="e.g. Paracetamol 650mg Tablets" Style="{StaticResource ModernTextBox}" Height="36" FontSize="13" Margin="0,0,0,10"/>
+                                <TextBlock Text="Product / Medicine Name *" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,3"/>
+                                <TextBox Text="{Binding NewProductName, UpdateSourceTrigger=PropertyChanged}" Tag="e.g. Paracetamol 650mg Tablets" Style="{StaticResource ModernTextBox}" Height="36" FontSize="12" Margin="0,0,0,10"/>
 
-                                <!-- HSN & Unit Dropdowns -->
+                                <!-- Item Code / SKU & Barcode Inputs -->
                                 <Grid Margin="0,0,0,10">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
@@ -1027,12 +1028,29 @@
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
                                     <StackPanel Grid.Column="0">
-                                        <TextBlock Text="HSN Code *" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" Margin="0,0,0,3"/>
-                                        <ComboBox ItemsSource="{Binding AvailableHsnCodes}" SelectedItem="{Binding SelectedHsn}" Style="{StaticResource ModernComboBox}" Height="38"/>
+                                        <TextBlock Text="Item Code / SKU *" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,3"/>
+                                        <TextBox Text="{Binding NewProductSku, UpdateSourceTrigger=PropertyChanged}" Tag="e.g. ITM-1001" Style="{StaticResource ModernTextBox}" Height="36" FontSize="12" ToolTip="Item Code / SKU (Auto-generated if left blank)"/>
                                     </StackPanel>
                                     <StackPanel Grid.Column="2">
-                                        <TextBlock Text="Unit (UQC) *" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" Margin="0,0,0,3"/>
-                                        <ComboBox ItemsSource="{Binding AvailableUnits}" SelectedItem="{Binding SelectedUnit}" Style="{StaticResource ModernComboBox}" Height="38"/>
+                                        <TextBlock Text="Barcode / EAN" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,3"/>
+                                        <TextBox Text="{Binding NewProductBarcode, UpdateSourceTrigger=PropertyChanged}" Tag="e.g. 8901234567890" Style="{StaticResource ModernTextBox}" Height="36" FontSize="12" ToolTip="Barcode / EAN (Auto-generated if left blank)"/>
+                                    </StackPanel>
+                                </Grid>
+
+                                <!-- HSN & Unit Dropdowns -->
+                                <Grid Margin="0,0,0,10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="1.2*"/>
+                                        <ColumnDefinition Width="8"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0">
+                                        <TextBlock Text="HSN Code *" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,3"/>
+                                        <ComboBox ItemsSource="{Binding AvailableHsnCodes}" SelectedItem="{Binding SelectedHsn}" Style="{StaticResource ModernComboBox}" Height="38" FontSize="12" ToolTip="{Binding SelectedHsn}"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2">
+                                        <TextBlock Text="Unit (UQC) *" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,3"/>
+                                        <ComboBox ItemsSource="{Binding AvailableUnits}" SelectedItem="{Binding SelectedUnit}" Style="{StaticResource ModernComboBox}" Height="38" FontSize="12" ToolTip="{Binding SelectedUnit}"/>
                                     </StackPanel>
                                 </Grid>
 
@@ -1046,22 +1064,22 @@
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
                                     <StackPanel Grid.Column="0">
-                                        <TextBlock Text="Buy Rate (₹)" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" Margin="0,0,0,3"/>
-                                        <TextBox Text="{Binding NewPurchasePrice, UpdateSourceTrigger=PropertyChanged}" Tag="e.g. 18.50" Style="{StaticResource ModernTextBox}" Height="36" FontSize="13"/>
+                                        <TextBlock Text="Buy Rate (₹)" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,3"/>
+                                        <TextBox Text="{Binding NewPurchasePrice, UpdateSourceTrigger=PropertyChanged}" Tag="e.g. 100" Style="{StaticResource ModernTextBox}" Height="36" FontSize="12"/>
                                     </StackPanel>
                                     <StackPanel Grid.Column="2">
-                                        <TextBlock Text="Sell Rate (₹)" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" Margin="0,0,0,3"/>
-                                        <TextBox Text="{Binding NewSellingPrice, UpdateSourceTrigger=PropertyChanged}" Tag="e.g. 30.00" Style="{StaticResource ModernTextBox}" Height="36" FontSize="13"/>
+                                        <TextBlock Text="Sell Rate (₹)" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,3"/>
+                                        <TextBox Text="{Binding NewSellingPrice, UpdateSourceTrigger=PropertyChanged}" Tag="e.g. 150" Style="{StaticResource ModernTextBox}" Height="36" FontSize="12"/>
                                     </StackPanel>
                                     <StackPanel Grid.Column="4">
-                                        <TextBlock Text="MRP (₹)" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" Margin="0,0,0,3"/>
-                                        <TextBox Text="{Binding NewMrp, UpdateSourceTrigger=PropertyChanged}" Tag="e.g. 35.00" Style="{StaticResource ModernTextBox}" Height="36" FontSize="13"/>
+                                        <TextBlock Text="MRP (₹)" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,3"/>
+                                        <TextBox Text="{Binding NewMrp, UpdateSourceTrigger=PropertyChanged}" Tag="e.g. 150" Style="{StaticResource ModernTextBox}" Height="36" FontSize="12"/>
                                     </StackPanel>
                                 </Grid>
 
                                 <!-- GST Rate Slab Dropdown -->
-                                <TextBlock Text="GST Tax Bracket *" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" Margin="0,0,0,3"/>
-                                <ComboBox ItemsSource="{Binding AvailableGstSlabs}" SelectedItem="{Binding SelectedGstSlab}" Style="{StaticResource ModernComboBox}" Height="38" Margin="0,0,0,10"/>
+                                <TextBlock Text="GST Tax Bracket *" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,3"/>
+                                <ComboBox ItemsSource="{Binding AvailableGstSlabs}" SelectedItem="{Binding SelectedGstSlab}" Style="{StaticResource ModernComboBox}" Height="38" FontSize="12" Margin="0,0,0,10" ToolTip="{Binding SelectedGstSlab}"/>
 
                                 <!-- Opening Stock & Min Alert -->
                                 <Grid Margin="0,0,0,10">
@@ -1071,12 +1089,12 @@
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
                                     <StackPanel Grid.Column="0">
-                                        <TextBlock Text="Opening Stock (Qty)" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" Margin="0,0,0,3"/>
-                                        <TextBox Text="{Binding NewCurrentStock, UpdateSourceTrigger=PropertyChanged}" Tag="e.g. 100" Style="{StaticResource ModernTextBox}" Height="36" FontSize="13"/>
+                                        <TextBlock Text="Opening Stock (Qty)" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,3"/>
+                                        <TextBox Text="{Binding NewCurrentStock, UpdateSourceTrigger=PropertyChanged}" Tag="e.g. 50" Style="{StaticResource ModernTextBox}" Height="36" FontSize="12"/>
                                     </StackPanel>
                                     <StackPanel Grid.Column="2">
-                                        <TextBlock Text="Min Alert Level" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" Margin="0,0,0,3"/>
-                                        <TextBox Text="{Binding NewMinStock, UpdateSourceTrigger=PropertyChanged}" Tag="e.g. 10" Style="{StaticResource ModernTextBox}" Height="36" FontSize="13"/>
+                                        <TextBlock Text="Min Alert Level" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,3"/>
+                                        <TextBox Text="{Binding NewMinStock, UpdateSourceTrigger=PropertyChanged}" Tag="e.g. 10" Style="{StaticResource ModernTextBox}" Height="36" FontSize="12"/>
                                     </StackPanel>
                                 </Grid>
 
@@ -1088,24 +1106,24 @@
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
                                     <StackPanel Grid.Column="0">
-                                        <TextBlock Text="Batch Number" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" Margin="0,0,0,3"/>
-                                        <TextBox Text="{Binding NewBatchNumber, UpdateSourceTrigger=PropertyChanged}" Tag="e.g. BATCH-2026-X1" Style="{StaticResource ModernTextBox}" Height="36" FontSize="13"/>
+                                        <TextBlock Text="Batch Number" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,3"/>
+                                        <TextBox Text="{Binding NewBatchNumber, UpdateSourceTrigger=PropertyChanged}" Tag="e.g. BAT-2605" Style="{StaticResource ModernTextBox}" Height="36" FontSize="12"/>
                                     </StackPanel>
                                     <StackPanel Grid.Column="2">
-                                        <TextBlock Text="Expiry Date" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" Margin="0,0,0,3"/>
-                                        <DatePicker SelectedDate="{Binding NewExpiryDate}" Height="36" Background="#0F172A" Foreground="{StaticResource TextPrimaryBrush}" BorderBrush="{StaticResource BorderBrush}"/>
+                                        <TextBlock Text="Expiry Date" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,3"/>
+                                        <DatePicker SelectedDate="{Binding NewExpiryDate}" Style="{StaticResource ModernDatePicker}" Height="36" FontSize="12"/>
                                     </StackPanel>
                                 </Grid>
 
                                 <!-- Rack Location Dropdown & Create Custom Rack Button -->
-                                <TextBlock Text="Rack / Storage Location *" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" Margin="0,0,0,3"/>
+                                <TextBlock Text="Rack / Storage Location *" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,3"/>
                                 <Grid Margin="0,0,0,12">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="8"/>
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
-                                    <ComboBox Grid.Column="0" ItemsSource="{Binding AvailableRackLocations}" SelectedItem="{Binding SelectedRackLocation}" Style="{StaticResource ModernComboBox}" Height="38"/>
+                                    <ComboBox Grid.Column="0" ItemsSource="{Binding AvailableRackLocations}" SelectedItem="{Binding SelectedRackLocation}" Style="{StaticResource ModernComboBox}" Height="38" FontSize="12" ToolTip="{Binding SelectedRackLocation}"/>
                                     <Button Grid.Column="2" Content="➕ New Rack" Style="{StaticResource PrimaryButton}" Height="38" Padding="12,0" FontSize="11" FontWeight="Bold" Command="{Binding OpenCreateRackModalCommand}"/>
                                 </Grid>
 

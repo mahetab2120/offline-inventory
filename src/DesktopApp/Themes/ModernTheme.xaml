@@ -185,7 +185,7 @@
         <Grid>
             <Grid.ColumnDefinitions>
                 <ColumnDefinition />
-                <ColumnDefinition Width="36" />
+                <ColumnDefinition Width="28" />
             </Grid.ColumnDefinitions>
             <Border x:Name="Border" 
                     Grid.ColumnSpan="2"
@@ -198,7 +198,7 @@
                   Fill="{StaticResource AccentCyanBrush}"
                   HorizontalAlignment="Center" 
                   VerticalAlignment="Center"
-                  Data="M 0 0 L 5 5 L 10 0 Z" />
+                  Data="M 0 0 L 4 4 L 8 0 Z" />
         </Grid>
         <ControlTemplate.Triggers>
             <Trigger Property="IsMouseOver" Value="True">
@@ -217,9 +217,9 @@
         <Setter Property="Background" Value="#0F172A"/>
         <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
         <Setter Property="BorderThickness" Value="1.5"/>
-        <Setter Property="FontSize" Value="14"/>
+        <Setter Property="FontSize" Value="13"/>
         <Setter Property="FontWeight" Value="Normal"/>
-        <Setter Property="Padding" Value="14,4"/>
+        <Setter Property="Padding" Value="10,4"/>
         <Setter Property="VerticalContentAlignment" Value="Center"/>
         <Setter Property="SnapsToDevicePixels" Value="True"/>
         <Setter Property="OverridesDefaultStyle" Value="True"/>
@@ -240,13 +240,14 @@
                                           Content="{TemplateBinding SelectionBoxItem}"
                                           ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
                                           ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}"
-                                          Margin="{TemplateBinding Padding}"
+                                          Margin="10,2,26,2"
                                           VerticalAlignment="Center"
                                           HorizontalAlignment="Left">
                             <ContentPresenter.Resources>
                                 <Style TargetType="TextBlock">
                                     <Setter Property="Foreground" Value="#FFFFFF"/>
-                                    <Setter Property="FontSize" Value="14"/>
+                                    <Setter Property="FontSize" Value="{Binding FontSize, RelativeSource={RelativeSource AncestorType=ComboBox}}"/>
+                                    <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
                                 </Style>
                             </ContentPresenter.Resources>
                         </ContentPresenter>
@@ -278,6 +279,30 @@
             </Setter.Value>
         </Setter>
     </Style>
+
+    <!-- Modern DatePickerTextBox Style -->
+    <Style TargetType="DatePickerTextBox">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Foreground" Value="#FFFFFF"/>
+        <Setter Property="CaretBrush" Value="#38BDF8"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+        <Setter Property="Padding" Value="4,0"/>
+    </Style>
+
+    <!-- Modern DatePicker Style -->
+    <Style x:Key="ModernDatePicker" TargetType="DatePicker">
+        <Setter Property="Foreground" Value="#FFFFFF"/>
+        <Setter Property="Background" Value="#0F172A"/>
+        <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
+        <Setter Property="BorderThickness" Value="1.5"/>
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="Height" Value="36"/>
+        <Setter Property="Padding" Value="8,2"/>
+    </Style>
+
+    <Style TargetType="DatePicker" BasedOn="{StaticResource ModernDatePicker}"/>
 
     <!-- Modern Card -->
     <Style x:Key="ModernCard" TargetType="Border">
