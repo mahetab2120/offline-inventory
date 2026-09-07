@@ -1,3 +1,5 @@
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
 using Domain.Enums;
 
 namespace Domain.Entities;
@@ -27,53 +29,144 @@ public class Supplier
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 }
 
-public class Invoice
+public class Invoice : INotifyPropertyChanged
 {
-    public Guid Id { get; set; } = Guid.NewGuid();
-    public string InvoiceNumber { get; set; } = string.Empty;
-    public DateTime InvoiceDateUtc { get; set; } = DateTime.UtcNow;
-    public Guid? CustomerId { get; set; }
-    public string CustomerName { get; set; } = "Walk-in Customer";
-    public string CustomerPhone { get; set; } = string.Empty;
-    public string? CustomerGSTIN { get; set; }
+    public event PropertyChangedEventHandler? PropertyChanged;
+    protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)
+    {
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+    }
+
+    private Guid _id = Guid.NewGuid();
+    public Guid Id { get => _id; set { _id = value; OnPropertyChanged(); } }
+
+    private string _invoiceNumber = string.Empty;
+    public string InvoiceNumber { get => _invoiceNumber; set { _invoiceNumber = value; OnPropertyChanged(); } }
+
+    private DateTime _invoiceDateUtc = DateTime.UtcNow;
+    public DateTime InvoiceDateUtc { get => _invoiceDateUtc; set { _invoiceDateUtc = value; OnPropertyChanged(); } }
+
+    private Guid? _customerId;
+    public Guid? CustomerId { get => _customerId; set { _customerId = value; OnPropertyChanged(); } }
+
+    private string _customerName = "Walk-in Customer";
+    public string CustomerName { get => _customerName; set { _customerName = value; OnPropertyChanged(); } }
+
+    private string _customerPhone = string.Empty;
+    public string CustomerPhone { get => _customerPhone; set { _customerPhone = value; OnPropertyChanged(); } }
+
+    private string? _customerGSTIN;
+    public string? CustomerGSTIN { get => _customerGSTIN; set { _customerGSTIN = value; OnPropertyChanged(); } }
     
-    public decimal SubTotal { get; set; }
-    public decimal TotalDiscount { get; set; }
-    public decimal TaxableAmount { get; set; }
-    public decimal TotalCGST { get; set; }
-    public decimal TotalSGST { get; set; }
-    public decimal TotalIGST { get; set; }
-    public decimal TotalCess { get; set; }
+    private decimal _subTotal;
+    public decimal SubTotal { get => _subTotal; set { _subTotal = value; OnPropertyChanged(); } }
+
+    private decimal _totalDiscount;
+    public decimal TotalDiscount { get => _totalDiscount; set { _totalDiscount = value; OnPropertyChanged(); } }
+
+    private decimal _taxableAmount;
+    public decimal TaxableAmount { get => _taxableAmount; set { _taxableAmount = value; OnPropertyChanged(); } }
+
+    private decimal _totalCGST;
+    public decimal TotalCGST { get => _totalCGST; set { _totalCGST = value; OnPropertyChanged(); OnPropertyChanged(nameof(TotalTax)); } }
+
+    private decimal _totalSGST;
+    public decimal TotalSGST { get => _totalSGST; set { _totalSGST = value; OnPropertyChanged(); OnPropertyChanged(nameof(TotalTax)); } }
+
+    private decimal _totalIGST;
+    public decimal TotalIGST { get => _totalIGST; set { _totalIGST = value; OnPropertyChanged(); OnPropertyChanged(nameof(TotalTax)); } }
+
+    private decimal _totalCess;
+    public decimal TotalCess { get => _totalCess; set { _totalCess = value; OnPropertyChanged(); OnPropertyChanged(nameof(TotalTax)); } }
+
     public decimal TotalTax => TotalCGST + TotalSGST + TotalIGST + TotalCess;
-    public decimal RoundOff { get; set; }
-    public decimal GrandTotal { get; set; }
+
+    private decimal _roundOff;
+    public decimal RoundOff { get => _roundOff; set { _roundOff = value; OnPropertyChanged(); } }
+
+    private decimal _grandTotal;
+    public decimal GrandTotal { get => _grandTotal; set { _grandTotal = value; OnPropertyChanged(); } }
     
-    public PaymentMethod PaymentMethod { get; set; } = PaymentMethod.Cash;
-    public decimal AmountPaid { get; set; }
-    public decimal ChangeDue { get; set; }
-    public InvoiceStatus Status { get; set; } = InvoiceStatus.Finalized;
-    public Guid CashierUserId { get; set; }
-    public string CashierUsername { get; set; } = string.Empty;
-    public string? Notes { get; set; }
+    private PaymentMethod _paymentMethod = PaymentMethod.Cash;
+    public PaymentMethod PaymentMethod { get => _paymentMethod; set { _paymentMethod = value; OnPropertyChanged(); } }
+
+    private decimal _amountPaid;
+    public decimal AmountPaid { get => _amountPaid; set { _amountPaid = value; OnPropertyChanged(); } }
+
+    private decimal _changeDue;
+    public decimal ChangeDue { get => _changeDue; set { _changeDue = value; OnPropertyChanged(); } }
+
+    private InvoiceStatus _status = InvoiceStatus.Finalized;
+    public InvoiceStatus Status { get => _status; set { _status = value; OnPropertyChanged(); } }
+
+    private Guid _cashierUserId;
+    public Guid CashierUserId { get => _cashierUserId; set { _cashierUserId = value; OnPropertyChanged(); } }
+
+    private string _cashierUsername = string.Empty;
+    public string CashierUsername { get => _cashierUsername; set { _cashierUsername = value; OnPropertyChanged(); } }
+
+    private string? _notes;
+    public string? Notes { get => _notes; set { _notes = value; OnPropertyChanged(); } }
+
     public List<InvoiceItem> Items { get; set; } = new();
 }
 
-public class InvoiceItem
+public class InvoiceItem : INotifyPropertyChanged
 {
-    public Guid Id { get; set; } = Guid.NewGuid();
-    public Guid InvoiceId { get; set; }
-    public Guid ProductId { get; set; }
-    public string ProductName { get; set; } = string.Empty;
-    public string SKU { get; set; } = string.Empty;
-    public string HSNCode { get; set; } = string.Empty;
-    public decimal Quantity { get; set; }
-    public string Unit { get; set; } = "PCS";
-    public decimal UnitPrice { get; set; }
-    public decimal DiscountAmount { get; set; }
-    public decimal TaxableValue { get; set; }
-    public decimal GSTRate { get; set; }
-    public decimal CGSTAmount { get; set; }
-    public decimal SGSTAmount { get; set; }
-    public decimal IGSTAmount { get; set; }
-    public decimal TotalAmount { get; set; }
+    public event PropertyChangedEventHandler? PropertyChanged;
+    public void OnPropertyChanged([CallerMemberName] string? propertyName = null)
+    {
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+    }
+
+    private Guid _id = Guid.NewGuid();
+    public Guid Id { get => _id; set { _id = value; OnPropertyChanged(); } }
+
+    private Guid _invoiceId;
+    public Guid InvoiceId { get => _invoiceId; set { _invoiceId = value; OnPropertyChanged(); } }
+
+    private Guid _productId;
+    public Guid ProductId { get => _productId; set { _productId = value; OnPropertyChanged(); } }
+
+    private string _productName = string.Empty;
+    public string ProductName { get => _productName; set { _productName = value; OnPropertyChanged(); } }
+
+    private string _sku = string.Empty;
+    public string SKU { get => _sku; set { _sku = value; OnPropertyChanged(); } }
+
+    private string _hsnCode = string.Empty;
+    public string HSNCode { get => _hsnCode; set { _hsnCode = value; OnPropertyChanged(); } }
+
+    private decimal _quantity = 1;
+    public decimal Quantity { get => _quantity; set { _quantity = value; OnPropertyChanged(); OnPropertyChanged(nameof(FormattedQuantity)); } }
+
+    private string _unit = "PCS";
+    public string Unit { get => _unit; set { _unit = value; OnPropertyChanged(); } }
+
+    private decimal _unitPrice;
+    public decimal UnitPrice { get => _unitPrice; set { _unitPrice = value; OnPropertyChanged(); } }
+
+    private decimal _discountAmount;
+    public decimal DiscountAmount { get => _discountAmount; set { _discountAmount = value; OnPropertyChanged(); OnPropertyChanged(nameof(HasDiscount)); } }
+
+    private decimal _taxableValue;
+    public decimal TaxableValue { get => _taxableValue; set { _taxableValue = value; OnPropertyChanged(); } }
+
+    private decimal _gstRate = 18;
+    public decimal GSTRate { get => _gstRate; set { _gstRate = value; OnPropertyChanged(); } }
+
+    private decimal _cgstAmount;
+    public decimal CGSTAmount { get => _cgstAmount; set { _cgstAmount = value; OnPropertyChanged(); } }
+
+    private decimal _sgstAmount;
+    public decimal SGSTAmount { get => _sgstAmount; set { _sgstAmount = value; OnPropertyChanged(); } }
+
+    private decimal _igstAmount;
+    public decimal IGSTAmount { get => _igstAmount; set { _igstAmount = value; OnPropertyChanged(); } }
+
+    private decimal _totalAmount;
+    public decimal TotalAmount { get => _totalAmount; set { _totalAmount = value; OnPropertyChanged(); } }
+
+    public string FormattedQuantity => $"x{Quantity:0.##}";
+    public bool HasDiscount => DiscountAmount > 0;
 }

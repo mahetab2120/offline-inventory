@@ -1220,7 +1220,7 @@ Modules Enabled:  {string.Join(", ", payload.EnabledModules)}";
         {
             existingItem.Quantity += 1;
             RecalculateCartTotals();
-            PosStatusMessage = $"Added +1 to {product.Name}";
+            PosStatusMessage = $"Added +1 to {product.Name} (Qty: {existingItem.Quantity:0.##})";
         }
         else
         {
@@ -1237,11 +1237,20 @@ Modules Enabled:  {string.Join(", ", payload.EnabledModules)}";
                 HSNCode = product.HSNCode,
                 Quantity = 1,
                 UnitPrice = price,
+                DiscountAmount = 0,
                 TaxableValue = taxable,
                 GSTRate = taxRate,
                 CGSTAmount = taxAmt / 2,
                 SGSTAmount = taxAmt / 2,
                 TotalAmount = price
+            };
+
+            newItem.PropertyChanged += (s, e) =>
+            {
+                if (e.PropertyName == nameof(InvoiceItem.Quantity) || e.PropertyName == nameof(InvoiceItem.DiscountAmount))
+                {
+                    RecalculateCartTotals();
+                }
             };
 
             PosCartItems.Add(newItem);
@@ -1250,6 +1259,43 @@ Modules Enabled:  {string.Join(", ", payload.EnabledModules)}";
         }
 
         PosSearchQuery = string.Empty;
+    }
+
+    [RelayCommand]
+    private void IncreaseCartItemQuantity(object? itemParam)
+    {
+        if (itemParam is InvoiceItem item)
+        {
+            item.Quantity += 1;
+            RecalculateCartTotals();
+            PosStatusMessage = $"Updated {item.ProductName} qty to {item.Quantity:0.##}";
+        }
+    }
+
+    [RelayCommand]
+    private void DecreaseCartItemQuantity(object? itemParam)
+    {
+        if (itemParam is InvoiceItem item)
+        {
+            if (item.Quantity > 1)
+            {
+                item.Quantity -= 1;
+                RecalculateCartTotals();
+                PosStatusMessage = $"Updated {item.ProductName} qty to {item.Quantity:0.##}";
+            }
+            else
+            {
+                PosCartItems.Remove(item);
+                RecalculateCartTotals();
+                PosStatusMessage = $"Removed {item.ProductName} from cart.";
+            }
+        }
+    }
+
+    [RelayCommand]
+    private void RecalculateCart()
+    {
+        RecalculateCartTotals();
     }
 
     [RelayCommand]
@@ -1283,61 +1329,104 @@ Modules Enabled:  {string.Join(", ", payload.EnabledModules)}";
         PosStatusMessage = "Cart cleared.";
     }
 
-    private void RecalculateCartTotals()
+    private bool _isRecalculating = false;
+
+    public void RecalculateCartTotals()
     {
-        decimal grossSum = 0;
-        foreach (var item in PosCartItems)
+        if (_isRecalculating) return;
+        _isRecalculating = true;
+        try
         {
-            grossSum += item.Quantity * item.UnitPrice;
-        }
-        PosGrossTotal = Math.Round(grossSum, 2);
+            decimal grossSum = 0;
+            foreach (var item in PosCartItems)
+            {
+                if (item.Quantity <= 0) item.Quantity = 1;
+                grossSum += item.Quantity * item.UnitPrice;
+            }
+            PosGrossTotal = Math.Round(grossSum, 2);
 
-        decimal discountAmount = 0;
-        if (CanApplyDiscount && DiscountValue > 0 && grossSum > 0)
+            // 1. Process item-level discounts
+            decimal totalItemDiscounts = 0;
+            decimal grossAfterItemDiscounts = 0;
+
+            foreach (var item in PosCartItems)
+            {
+                decimal itemGross = item.Quantity * item.UnitPrice;
+                if (!CanApplyDiscount)
+                {
+                    item.DiscountAmount = 0;
+                }
+                else if (item.DiscountAmount > itemGross)
+                {
+                    item.DiscountAmount = itemGross;
+                }
+                else if (item.DiscountAmount < 0)
+                {
+                    item.DiscountAmount = 0;
+                }
+
+                totalItemDiscounts += item.DiscountAmount;
+                grossAfterItemDiscounts += Math.Max(0, itemGross - item.DiscountAmount);
+            }
+
+            // 2. Process bill-level discount
+            decimal billDiscount = 0;
+            if (CanApplyDiscount && DiscountValue > 0 && grossAfterItemDiscounts > 0)
+            {
+                if (DiscountType == "Percentage" || DiscountType == "%")
+                {
+                    decimal pct = Math.Clamp(DiscountValue, 0, 100);
+                    billDiscount = Math.Round(grossAfterItemDiscounts * (pct / 100m), 2);
+                }
+                else
+                {
+                    billDiscount = Math.Round(Math.Clamp(DiscountValue, 0, grossAfterItemDiscounts), 2);
+                }
+            }
+
+            decimal totalCombinedDiscount = totalItemDiscounts + billDiscount;
+            PosDiscountTotal = Math.Round(totalCombinedDiscount, 2);
+
+            // 3. Compute item taxables, GST, and totals
+            decimal subTotal = 0;
+            decimal taxTotal = 0;
+            decimal grandTotal = 0;
+
+            foreach (var item in PosCartItems)
+            {
+                decimal itemGross = item.Quantity * item.UnitPrice;
+                decimal afterItemDisc = Math.Max(0, itemGross - item.DiscountAmount);
+
+                decimal lineBillDisc = 0;
+                if (grossAfterItemDiscounts > 0 && billDiscount > 0)
+                {
+                    lineBillDisc = Math.Round(billDiscount * (afterItemDisc / grossAfterItemDiscounts), 2);
+                }
+
+                decimal totalItemDiscount = item.DiscountAmount + lineBillDisc;
+                decimal effectiveLineTotal = Math.Max(0, itemGross - totalItemDiscount);
+
+                decimal lineTaxable = effectiveLineTotal / (1 + (item.GSTRate / 100m));
+                decimal lineTax = effectiveLineTotal - lineTaxable;
+
+                item.TaxableValue = Math.Round(lineTaxable, 2);
+                item.CGSTAmount = Math.Round(lineTax / 2, 2);
+                item.SGSTAmount = Math.Round(lineTax / 2, 2);
+                item.TotalAmount = Math.Round(effectiveLineTotal, 2);
+
+                subTotal += item.TaxableValue;
+                taxTotal += item.CGSTAmount + item.SGSTAmount;
+                grandTotal += item.TotalAmount;
+            }
+
+            PosSubTotal = Math.Round(subTotal, 2);
+            PosTaxTotal = Math.Round(taxTotal, 2);
+            PosGrandTotal = Math.Round(grandTotal, 2);
+        }
+        finally
         {
-            if (DiscountType == "Percentage" || DiscountType == "%")
-            {
-                decimal pct = Math.Clamp(DiscountValue, 0, 100);
-                discountAmount = Math.Round(grossSum * (pct / 100m), 2);
-            }
-            else
-            {
-                discountAmount = Math.Round(Math.Clamp(DiscountValue, 0, grossSum), 2);
-            }
+            _isRecalculating = false;
         }
-        PosDiscountTotal = discountAmount;
-
-        decimal subTotal = 0;
-        decimal taxTotal = 0;
-        decimal grandTotal = 0;
-
-        foreach (var item in PosCartItems)
-        {
-            decimal itemGross = item.Quantity * item.UnitPrice;
-            decimal itemDiscount = 0;
-            if (grossSum > 0 && discountAmount > 0)
-            {
-                itemDiscount = Math.Round(discountAmount * (itemGross / grossSum), 2);
-            }
-            item.DiscountAmount = itemDiscount;
-
-            decimal effectiveLineTotal = Math.Max(0, itemGross - itemDiscount);
-            decimal lineTaxable = effectiveLineTotal / (1 + (item.GSTRate / 100m));
-            decimal lineTax = effectiveLineTotal - lineTaxable;
-
-            item.TaxableValue = Math.Round(lineTaxable, 2);
-            item.CGSTAmount = Math.Round(lineTax / 2, 2);
-            item.SGSTAmount = Math.Round(lineTax / 2, 2);
-            item.TotalAmount = Math.Round(effectiveLineTotal, 2);
-
-            subTotal += item.TaxableValue;
-            taxTotal += item.CGSTAmount + item.SGSTAmount;
-            grandTotal += item.TotalAmount;
-        }
-
-        PosSubTotal = Math.Round(subTotal, 2);
-        PosTaxTotal = Math.Round(taxTotal, 2);
-        PosGrandTotal = Math.Round(grandTotal, 2);
     }
 
     [RelayCommand]
