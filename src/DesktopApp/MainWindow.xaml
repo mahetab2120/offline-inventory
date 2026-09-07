@@ -637,21 +637,30 @@
                                 </Grid.RowDefinitions>
 
                                 <!-- Customer & Cart Header -->
-                                <StackPanel Grid.Row="0" Margin="0,0,0,12">
-                                    <TextBlock Text="CURRENT POS BILL" Foreground="{StaticResource AccentCyanBrush}" FontSize="15" FontWeight="Bold"/>
-                                    <Grid Margin="0,8,0,0">
+                                <StackPanel Grid.Row="0" Margin="0,0,0,10">
+                                    <Grid Margin="0,0,0,6">
+                                        <TextBlock Text="CURRENT POS BILL" Foreground="{StaticResource AccentCyanBrush}" FontSize="14" FontWeight="Bold"/>
+                                        <TextBlock Text="B2C / B2B Sale" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                    </Grid>
+                                    <Grid Margin="0,2,0,0">
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="6"/>
+                                            <RowDefinition Height="Auto"/>
+                                        </Grid.RowDefinitions>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*"/>
                                             <ColumnDefinition Width="8"/>
                                             <ColumnDefinition Width="*"/>
                                         </Grid.ColumnDefinitions>
-                                        <TextBox Grid.Column="0" Text="{Binding CustomerName, UpdateSourceTrigger=PropertyChanged}" Tag="Customer Name (e.g. Rahul Sharma)" Style="{StaticResource ModernTextBox}" Height="36" FontSize="12" ToolTip="Customer Name"/>
-                                        <TextBox Grid.Column="2" Text="{Binding CustomerPhone, UpdateSourceTrigger=PropertyChanged}" Tag="Mobile / WhatsApp (e.g. 9876543210)" Style="{StaticResource ModernTextBox}" Height="36" FontSize="12" ToolTip="Mobile / WhatsApp"/>
+                                        <TextBox Grid.Row="0" Grid.Column="0" Text="{Binding CustomerName, UpdateSourceTrigger=PropertyChanged}" Tag="Customer Name (e.g. Rahul Sharma)" Style="{StaticResource ModernTextBox}" Height="34" FontSize="11" ToolTip="Customer Name"/>
+                                        <TextBox Grid.Row="0" Grid.Column="2" Text="{Binding CustomerPhone, UpdateSourceTrigger=PropertyChanged}" Tag="Mobile / WhatsApp (e.g. 9876543210)" Style="{StaticResource ModernTextBox}" Height="34" FontSize="11" ToolTip="Mobile / WhatsApp"/>
+                                        <TextBox Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="3" Text="{Binding CustomerGstin, UpdateSourceTrigger=PropertyChanged}" Tag="Customer GSTIN (e.g. 27AAAAA0000A1Z5 - B2B Tax Invoice)" Style="{StaticResource ModernTextBox}" Height="32" FontSize="11" ToolTip="Customer GSTIN (Optional B2B Tax Invoice)"/>
                                     </Grid>
                                 </StackPanel>
 
                                 <!-- Cart Items List -->
-                                <Border Grid.Row="1" Background="#0F172A" CornerRadius="6" Padding="8" Margin="0,0,0,14" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+                                <Border Grid.Row="1" Background="#0F172A" CornerRadius="6" Padding="8" Margin="0,0,0,10" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
                                     <ScrollViewer VerticalScrollBarVisibility="Auto">
                                         <ItemsControl ItemsSource="{Binding PosCartItems}">
                                             <ItemsControl.ItemTemplate>
@@ -681,19 +690,56 @@
 
                                 <!-- Bill Calculation & Settle -->
                                 <StackPanel Grid.Row="2">
-                                    <Grid Margin="0,0,0,6">
-                                        <TextBlock Text="Taxable Subtotal:" Foreground="{StaticResource TextSecondaryBrush}" FontSize="13"/>
-                                        <TextBlock Text="{Binding PosSubTotal, StringFormat='₹{0:N2}'}" Foreground="{StaticResource TextPrimaryBrush}" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Right"/>
+                                    <!-- Discount Controls (Role Restricted to Business Admin) -->
+                                    <Border Background="#0F172A" CornerRadius="6" Padding="10,6" Margin="0,0,0,8" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+                                        <StackPanel>
+                                            <Grid Margin="0,0,0,4">
+                                                <TextBlock Text="🏷️ BILL DISCOUNT (ADMIN RIGHT)" Foreground="{StaticResource AccentCyanBrush}" FontSize="10" FontWeight="Bold" VerticalAlignment="Center"/>
+                                                <TextBlock Text="{Binding DiscountPermissionStatusText}" FontSize="10" FontWeight="SemiBold" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                            </Grid>
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="6"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+
+                                                <!-- Mode Toggle -->
+                                                <StackPanel Grid.Column="0" Orientation="Horizontal">
+                                                    <Button Content="₹ Flat" Style="{StaticResource PrimaryButton}" Height="30" Padding="8,0" FontSize="11" FontWeight="Bold" IsEnabled="{Binding CanApplyDiscount}" Command="{Binding SetDiscountTypeCommand}" CommandParameter="Flat"/>
+                                                    <Button Content="% Pct" Style="{StaticResource PrimaryButton}" Height="30" Padding="8,0" FontSize="11" FontWeight="Bold" Margin="4,0,0,0" IsEnabled="{Binding CanApplyDiscount}" Command="{Binding SetDiscountTypeCommand}" CommandParameter="Percentage"/>
+                                                </StackPanel>
+
+                                                <!-- Discount Input Box -->
+                                                <TextBox Grid.Column="2" Text="{Binding DiscountValue, UpdateSourceTrigger=PropertyChanged, StringFormat='{}{0:0.##}'}" Tag="Discount amount..." Style="{StaticResource ModernTextBox}" Height="30" FontSize="11" IsEnabled="{Binding CanApplyDiscount}" ToolTip="Discount value (Only Business Admin or Authorized Staff)"/>
+
+                                                <!-- Amount Display -->
+                                                <Border Grid.Column="3" Background="#1E293B" CornerRadius="4" Padding="8,2" Margin="6,0,0,0" VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding PosDiscountTotal, StringFormat='-₹{0:N2}'}" Foreground="{StaticResource WarningAmberBrush}" FontSize="11" FontWeight="Bold"/>
+                                                </Border>
+                                            </Grid>
+                                        </StackPanel>
+                                    </Border>
+
+                                    <!-- Summary Calculation Rows -->
+                                    <Grid Margin="0,0,0,3">
+                                        <TextBlock Text="Gross Subtotal:" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11"/>
+                                        <TextBlock Text="{Binding PosGrossTotal, StringFormat='₹{0:N2}'}" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" HorizontalAlignment="Right"/>
                                     </Grid>
-                                    <Grid Margin="0,0,0,10">
-                                        <TextBlock Text="GST Tax Total (CGST + SGST):" Foreground="{StaticResource TextSecondaryBrush}" FontSize="13"/>
-                                        <TextBlock Text="{Binding PosTaxTotal, StringFormat='₹{0:N2}'}" Foreground="{StaticResource AccentCyanBrush}" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Right"/>
+                                    <Grid Margin="0,0,0,3">
+                                        <TextBlock Text="Taxable Value (Post-Discount):" Foreground="{StaticResource TextSecondaryBrush}" FontSize="12"/>
+                                        <TextBlock Text="{Binding PosSubTotal, StringFormat='₹{0:N2}'}" Foreground="{StaticResource TextPrimaryBrush}" FontSize="12" FontWeight="SemiBold" HorizontalAlignment="Right"/>
+                                    </Grid>
+                                    <Grid Margin="0,0,0,6">
+                                        <TextBlock Text="GST Tax Total (CGST + SGST):" Foreground="{StaticResource TextSecondaryBrush}" FontSize="12"/>
+                                        <TextBlock Text="{Binding PosTaxTotal, StringFormat='₹{0:N2}'}" Foreground="{StaticResource AccentCyanBrush}" FontSize="12" FontWeight="SemiBold" HorizontalAlignment="Right"/>
                                     </Grid>
 
-                                    <Border Background="#111827" CornerRadius="6" Padding="14,10" Margin="0,0,0,14">
+                                    <Border Background="#111827" CornerRadius="6" Padding="12,8" Margin="0,0,0,10">
                                         <Grid>
-                                            <TextBlock Text="GRAND TOTAL:" Foreground="White" FontSize="16" FontWeight="Bold" VerticalAlignment="Center"/>
-                                            <TextBlock Text="{Binding PosGrandTotal, StringFormat='₹{0:N2}'}" Foreground="{StaticResource SuccessGreenBrush}" FontSize="22" FontWeight="Bold" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                            <TextBlock Text="GRAND TOTAL:" Foreground="White" FontSize="15" FontWeight="Bold" VerticalAlignment="Center"/>
+                                            <TextBlock Text="{Binding PosGrandTotal, StringFormat='₹{0:N2}'}" Foreground="{StaticResource SuccessGreenBrush}" FontSize="20" FontWeight="Bold" HorizontalAlignment="Right" VerticalAlignment="Center"/>
                                         </Grid>
                                     </Border>
 
@@ -705,22 +751,22 @@
                                         </Grid.ColumnDefinitions>
                                         <StackPanel Grid.Column="0">
                                             <TextBlock Text="Payment Mode:" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" Margin="0,0,0,4"/>
-                                            <ComboBox ItemsSource="{Binding PaymentMethods}" SelectedItem="{Binding SelectedPaymentMethod}" Style="{StaticResource ModernComboBox}" Height="36"/>
+                                            <ComboBox ItemsSource="{Binding PaymentMethods}" SelectedItem="{Binding SelectedPaymentMethod}" Style="{StaticResource ModernComboBox}" Height="34"/>
                                         </StackPanel>
                                         <StackPanel Grid.Column="2">
                                             <TextBlock Text="Target Printer:" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" Margin="0,0,0,4"/>
-                                            <ComboBox ItemsSource="{Binding AvailablePrinters}" SelectedItem="{Binding SelectedPrinter}" Style="{StaticResource ModernComboBox}" Height="36" FontSize="11" ToolTip="Select printer for direct printing"/>
+                                            <ComboBox ItemsSource="{Binding AvailablePrinters}" SelectedItem="{Binding SelectedPrinter}" Style="{StaticResource ModernComboBox}" Height="34" FontSize="11" ToolTip="Select printer for direct printing"/>
                                         </StackPanel>
                                     </Grid>
 
-                                    <Grid Margin="0,4,0,0">
+                                    <Grid Margin="0,2,0,0">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*"/>
                                             <ColumnDefinition Width="8"/>
                                             <ColumnDefinition Width="2*"/>
                                         </Grid.ColumnDefinitions>
-                                        <Button Grid.Column="0" Content="🧹 Clear" Style="{StaticResource PrimaryButton}" Background="{StaticResource SurfaceCardBrush}" Height="44" Command="{Binding ClearCartCommand}"/>
-                                        <Button Grid.Column="2" Content="💳 Settle &amp; Direct Print" Style="{StaticResource SuccessButton}" Height="44" FontSize="13" FontWeight="Bold" Command="{Binding CheckoutAndPrintInvoiceCommand}"/>
+                                        <Button Grid.Column="0" Content="🧹 Clear" Style="{StaticResource PrimaryButton}" Background="{StaticResource SurfaceCardBrush}" Height="40" Command="{Binding ClearCartCommand}"/>
+                                        <Button Grid.Column="2" Content="💳 Settle &amp; Direct Print" Style="{StaticResource SuccessButton}" Height="40" FontSize="13" FontWeight="Bold" Command="{Binding CheckoutAndPrintInvoiceCommand}"/>
                                     </Grid>
                                 </StackPanel>
                             </Grid>
@@ -779,16 +825,18 @@
                                           HorizontalGridLinesBrush="#334155"
                                           RowHeight="44">
                                     <DataGrid.Columns>
-                                        <DataGridTextColumn Header="INVOICE NO" Binding="{Binding InvoiceNumber}" Width="130"/>
-                                        <DataGridTextColumn Header="DATE &amp; TIME" Binding="{Binding InvoiceDateUtc, StringFormat='{}{0:dd-MMM-yyyy HH:mm}'}" Width="150"/>
-                                        <DataGridTextColumn Header="CUSTOMER" Binding="{Binding CustomerName}" Width="1.5*"/>
-                                        <DataGridTextColumn Header="CONTACT PHONE" Binding="{Binding CustomerPhone}" Width="130"/>
-                                        <DataGridTextColumn Header="PAYMENT" Binding="{Binding PaymentMethod}" Width="90"/>
-                                        <DataGridTextColumn Header="TAXABLE (₹)" Binding="{Binding TaxableAmount, StringFormat='₹{0:N2}'}" Width="110"/>
-                                        <DataGridTextColumn Header="GST TAX (₹)" Binding="{Binding TotalTax, StringFormat='₹{0:N2}'}" Width="110"/>
-                                        <DataGridTextColumn Header="GRAND TOTAL (₹)" Binding="{Binding GrandTotal, StringFormat='₹{0:N2}'}" Width="130"/>
-                                        <DataGridTextColumn Header="CASHIER" Binding="{Binding CashierUsername}" Width="100"/>
-                                        <DataGridTemplateColumn Header="ACTIONS" Width="140">
+                                        <DataGridTextColumn Header="INVOICE NO" Binding="{Binding InvoiceNumber}" Width="120"/>
+                                        <DataGridTextColumn Header="DATE &amp; TIME" Binding="{Binding InvoiceDateUtc, StringFormat='{}{0:dd-MMM-yyyy HH:mm}'}" Width="140"/>
+                                        <DataGridTextColumn Header="CUSTOMER" Binding="{Binding CustomerName}" Width="1.4*"/>
+                                        <DataGridTextColumn Header="GSTIN (B2B)" Binding="{Binding CustomerGSTIN, TargetNullValue='-'}" Width="130"/>
+                                        <DataGridTextColumn Header="CONTACT" Binding="{Binding CustomerPhone}" Width="110"/>
+                                        <DataGridTextColumn Header="PAYMENT" Binding="{Binding PaymentMethod}" Width="85"/>
+                                        <DataGridTextColumn Header="DISCOUNT (₹)" Binding="{Binding TotalDiscount, StringFormat='₹{0:N2}'}" Width="100"/>
+                                        <DataGridTextColumn Header="TAXABLE (₹)" Binding="{Binding TaxableAmount, StringFormat='₹{0:N2}'}" Width="105"/>
+                                        <DataGridTextColumn Header="GST TAX (₹)" Binding="{Binding TotalTax, StringFormat='₹{0:N2}'}" Width="105"/>
+                                        <DataGridTextColumn Header="GRAND TOTAL (₹)" Binding="{Binding GrandTotal, StringFormat='₹{0:N2}'}" Width="125"/>
+                                        <DataGridTextColumn Header="CASHIER" Binding="{Binding CashierUsername}" Width="90"/>
+                                        <DataGridTemplateColumn Header="ACTIONS" Width="130">
                                             <DataGridTemplateColumn.CellTemplate>
                                                 <DataTemplate>
                                                     <Button Content="🖨️ Print Preview" Style="{StaticResource PrimaryButton}" Padding="8,4" FontSize="11" FontWeight="Bold" Command="{Binding DataContext.OpenPrintPreviewCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}"/>
@@ -1313,6 +1361,7 @@
                                 <TextBlock Text="Granular Access Permissions:" Foreground="{StaticResource AccentCyanBrush}" FontSize="11" FontWeight="Bold" Margin="0,0,0,8"/>
                                 <CheckBox Content="Can Manage Inventory &amp; Stock In/Out" IsChecked="{Binding PermCanManageInventory}" Foreground="{StaticResource TextPrimaryBrush}" FontSize="12" Margin="0,0,0,6"/>
                                 <CheckBox Content="Can Perform POS Billing &amp; Invoicing" IsChecked="{Binding PermCanPerformBilling}" Foreground="{StaticResource TextPrimaryBrush}" FontSize="12" Margin="0,0,0,6"/>
+                                <CheckBox Content="Can Grant Billing Discounts (Admin Right)" IsChecked="{Binding PermCanApplyDiscount}" Foreground="{StaticResource TextPrimaryBrush}" FontSize="12" Margin="0,0,0,6"/>
                                 <CheckBox Content="Can View GST Financial Reports" IsChecked="{Binding PermCanViewReports}" Foreground="{StaticResource TextPrimaryBrush}" FontSize="12" Margin="0,0,0,6"/>
                                 <CheckBox Content="Can Generate Super Admin CA Export" IsChecked="{Binding PermCanExportCaData}" Foreground="{StaticResource TextPrimaryBrush}" FontSize="12" Margin="0,0,0,6"/>
                                 <CheckBox Content="Can Manage Users &amp; Roles" IsChecked="{Binding PermCanManageUsers}" Foreground="{StaticResource TextPrimaryBrush}" FontSize="12" Margin="0,0,0,14"/>
@@ -1605,89 +1654,114 @@
         <!-- TAX INVOICE & BILL OF SUPPLY PRINT PREVIEW MODAL OVERLAY (A4 / A5 / THERMAL)-->
         <!-- ========================================================================= -->
         <Grid Background="#E6000000" Visibility="{Binding IsPrintPreviewModalOpen, Converter={StaticResource BoolToVis}}">
-            <Grid MaxWidth="860" MaxHeight="900" HorizontalAlignment="Center" VerticalAlignment="Center">
+            <Grid Width="980" MaxWidth="1080" MaxHeight="900" HorizontalAlignment="Center" VerticalAlignment="Center">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
 
                 <!-- Top Toolbar: Format Switcher & Print Actions -->
-                <Border Grid.Row="0" Background="#0F172A" CornerRadius="10,10,0,0" Padding="18,12" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1,1,1,0">
+                <Border Grid.Row="0" Background="#0F172A" CornerRadius="10,10,0,0" Padding="20,14" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1,1,1,0">
                     <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
 
-                        <!-- Left: Title & Invoice Badge -->
-                        <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                            <TextBlock Text="🖨️ " FontSize="18" VerticalAlignment="Center"/>
-                            <TextBlock Text="PRINT PREVIEW" Foreground="{StaticResource AccentCyanBrush}" FontSize="15" FontWeight="Bold" VerticalAlignment="Center"/>
-                            <Border Background="#1E293B" CornerRadius="4" Padding="8,2" Margin="10,0,0,0" VerticalAlignment="Center">
-                                <TextBlock Text="{Binding SelectedPrintInvoice.InvoiceNumber}" Foreground="White" FontSize="12" FontWeight="Bold"/>
-                            </Border>
-                        </StackPanel>
+                        <!-- Row 0: Modal Title, Invoice Badge, and Close Button -->
+                        <Grid Grid.Row="0" Margin="0,0,0,12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
 
-                        <!-- Center: Paper / Printer Size Switcher (Thermal vs A4 vs A5) -->
-                        <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
-                            <Button Content="🧾 80mm Thermal" Height="34" Padding="12,0" FontSize="11" Margin="0,0,6,0" Command="{Binding SetPrintPreviewModeCommand}" CommandParameter="Thermal">
-                                <Button.Style>
-                                    <Style TargetType="Button" BasedOn="{StaticResource PrimaryButton}">
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding PrintPreviewMode}" Value="Thermal">
-                                                <Setter Property="Background" Value="{StaticResource AccentCyanBrush}"/>
-                                                <Setter Property="Foreground" Value="#0F172A"/>
-                                                <Setter Property="FontWeight" Value="Bold"/>
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </Button.Style>
-                            </Button>
+                            <!-- Left: Title & Invoice Badge -->
+                            <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                                <TextBlock Text="🖨️ " FontSize="18" VerticalAlignment="Center"/>
+                                <TextBlock Text="GST TAX INVOICE &amp; BILL OF SUPPLY PREVIEW" Foreground="{StaticResource AccentCyanBrush}" FontSize="15" FontWeight="Bold" VerticalAlignment="Center"/>
+                                <Border Background="#1E293B" CornerRadius="4" Padding="10,3" Margin="12,0,0,0" VerticalAlignment="Center" BorderBrush="#334155" BorderThickness="1">
+                                    <TextBlock Text="{Binding SelectedPrintInvoice.InvoiceNumber}" Foreground="White" FontSize="12" FontWeight="Bold"/>
+                                </Border>
+                            </StackPanel>
 
-                            <Button Content="📄 A4 Full Page" Height="34" Padding="12,0" FontSize="11" Margin="0,0,6,0" Command="{Binding SetPrintPreviewModeCommand}" CommandParameter="A4">
-                                <Button.Style>
-                                    <Style TargetType="Button" BasedOn="{StaticResource PrimaryButton}">
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding PrintPreviewMode}" Value="A4">
-                                                <Setter Property="Background" Value="{StaticResource AccentCyanBrush}"/>
-                                                <Setter Property="Foreground" Value="#0F172A"/>
-                                                <Setter Property="FontWeight" Value="Bold"/>
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </Button.Style>
-                            </Button>
+                            <Button Grid.Column="1" Content="✕ Close" Style="{StaticResource PrimaryButton}" Background="#334155" Height="32" Padding="14,0" FontSize="12" Command="{Binding ClosePrintPreviewCommand}"/>
+                        </Grid>
 
-                            <Button Content="📑 A5 Half Page" Height="34" Padding="12,0" FontSize="11" Command="{Binding SetPrintPreviewModeCommand}" CommandParameter="A5">
-                                <Button.Style>
-                                    <Style TargetType="Button" BasedOn="{StaticResource PrimaryButton}">
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding PrintPreviewMode}" Value="A5">
-                                                <Setter Property="Background" Value="{StaticResource AccentCyanBrush}"/>
-                                                <Setter Property="Foreground" Value="#0F172A"/>
-                                                <Setter Property="FontWeight" Value="Bold"/>
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </Button.Style>
-                            </Button>
-                        </StackPanel>
+                        <!-- Row 1: Format Switcher Tabs (Left) & Target Printer + Direct Print (Right) -->
+                        <Grid Grid.Row="1">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
 
-                        <!-- Right: Printer Device Selector & Direct Print Actions -->
-                        <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                            <!-- Printer Device Dropdown -->
-                            <ComboBox ItemsSource="{Binding AvailablePrinters}" SelectedItem="{Binding SelectedPrinter}" Width="190" Height="34" Style="{StaticResource ModernComboBox}" FontSize="11" Margin="0,0,8,0" ToolTip="Select printer device"/>
+                            <!-- Left: Paper / Printer Size Switcher (Thermal vs A4 vs A5) -->
+                            <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                                <TextBlock Text="Format: " Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" VerticalAlignment="Center" Margin="0,0,6,0"/>
 
-                            <!-- 1-Click Direct Print Button -->
-                            <Button Content="⚡ Direct Print" Style="{StaticResource SuccessButton}" Height="34" Padding="12,0" FontSize="11" FontWeight="Bold" Margin="0,0,6,0" Command="{Binding DirectPrintCurrentInvoiceCommand}" ToolTip="Directly send print job immediately to selected printer"/>
+                                <Button Content="🧾 80mm Thermal" Height="34" Padding="12,0" FontSize="11" Margin="0,0,6,0" Command="{Binding SetPrintPreviewModeCommand}" CommandParameter="Thermal">
+                                    <Button.Style>
+                                        <Style TargetType="Button" BasedOn="{StaticResource PrimaryButton}">
+                                            <Setter Property="Background" Value="#1E293B"/>
+                                            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding PrintPreviewMode}" Value="Thermal">
+                                                    <Setter Property="Background" Value="{StaticResource AccentCyanBrush}"/>
+                                                    <Setter Property="Foreground" Value="#0F172A"/>
+                                                    <Setter Property="FontWeight" Value="Bold"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
+                                </Button>
 
-                            <!-- System Print Dialog Button -->
-                            <Button Content="⚙️ Print Dialog" Style="{StaticResource PrimaryButton}" Background="#1E293B" Foreground="{StaticResource AccentCyanBrush}" Height="34" Padding="10,0" FontSize="11" FontWeight="SemiBold" Margin="0,0,8,0" Command="{Binding PrintSystemInvoiceCommand}" ToolTip="Open Windows system print dialog"/>
+                                <Button Content="📄 A4 Full Page" Height="34" Padding="12,0" FontSize="11" Margin="0,0,6,0" Command="{Binding SetPrintPreviewModeCommand}" CommandParameter="A4">
+                                    <Button.Style>
+                                        <Style TargetType="Button" BasedOn="{StaticResource PrimaryButton}">
+                                            <Setter Property="Background" Value="#1E293B"/>
+                                            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding PrintPreviewMode}" Value="A4">
+                                                    <Setter Property="Background" Value="{StaticResource AccentCyanBrush}"/>
+                                                    <Setter Property="Foreground" Value="#0F172A"/>
+                                                    <Setter Property="FontWeight" Value="Bold"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
+                                </Button>
 
-                            <!-- Close Button -->
-                            <Button Content="✕ Close" Style="{StaticResource PrimaryButton}" Background="#334155" Height="34" Padding="10,0" FontSize="11" Command="{Binding ClosePrintPreviewCommand}"/>
-                        </StackPanel>
+                                <Button Content="📑 A5 Half Page" Height="34" Padding="12,0" FontSize="11" Command="{Binding SetPrintPreviewModeCommand}" CommandParameter="A5">
+                                    <Button.Style>
+                                        <Style TargetType="Button" BasedOn="{StaticResource PrimaryButton}">
+                                            <Setter Property="Background" Value="#1E293B"/>
+                                            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding PrintPreviewMode}" Value="A5">
+                                                    <Setter Property="Background" Value="{StaticResource AccentCyanBrush}"/>
+                                                    <Setter Property="Foreground" Value="#0F172A"/>
+                                                    <Setter Property="FontWeight" Value="Bold"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
+                                </Button>
+                            </StackPanel>
+
+                            <!-- Right: Printer Device Selector & Direct Print Actions -->
+                            <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                                <TextBlock Text="Printer: " Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" VerticalAlignment="Center" Margin="0,0,6,0"/>
+
+                                <!-- Printer Device Dropdown -->
+                                <ComboBox ItemsSource="{Binding AvailablePrinters}" SelectedItem="{Binding SelectedPrinter}" Width="200" Height="34" Style="{StaticResource ModernComboBox}" FontSize="11" Margin="0,0,8,0" ToolTip="Select printer device. Selecting Microsoft Print to PDF automatically switches to A4 Full Page!"/>
+
+                                <!-- 1-Click Direct Print Button -->
+                                <Button Content="⚡ Direct Print" Style="{StaticResource SuccessButton}" Height="34" Padding="12,0" FontSize="11" FontWeight="Bold" Margin="0,0,6,0" Command="{Binding DirectPrintCurrentInvoiceCommand}" ToolTip="Directly send print job immediately to selected printer"/>
+
+                                <!-- System Print Dialog Button -->
+                                <Button Content="⚙️ Print Dialog" Style="{StaticResource PrimaryButton}" Background="#1E293B" Foreground="{StaticResource AccentCyanBrush}" Height="34" Padding="10,0" FontSize="11" FontWeight="SemiBold" Command="{Binding PrintSystemInvoiceCommand}" ToolTip="Open Windows system print dialog"/>
+                            </StackPanel>
+                        </Grid>
                     </Grid>
                 </Border>
 
@@ -1803,8 +1877,8 @@
                                                     <TextBlock Text="{Binding CurrentCompany.State}" Foreground="#0F172A" FontSize="11" HorizontalAlignment="Right"/>
                                                 </Grid>
                                                 <Grid Margin="0,2">
-                                                    <TextBlock Text="GSTIN / UIN:" Foreground="#64748B" FontSize="11"/>
-                                                    <TextBlock Text="Unregistered (B2C)" Foreground="#64748B" FontSize="11" HorizontalAlignment="Right"/>
+                                                    <TextBlock Text="Customer GSTIN:" Foreground="#64748B" FontSize="11"/>
+                                                    <TextBlock Text="{Binding SelectedPrintInvoice.CustomerGSTIN, FallbackValue='Unregistered (B2C)', TargetNullValue='Unregistered (B2C)'}" Foreground="#0F172A" FontSize="11" FontWeight="Bold" HorizontalAlignment="Right"/>
                                                 </Grid>
                                             </StackPanel>
                                         </Border>
@@ -1851,6 +1925,7 @@
                                             <DataGridTextColumn Header="QTY" Binding="{Binding Quantity}" Width="50"/>
                                             <DataGridTextColumn Header="UNIT" Binding="{Binding Unit}" Width="50"/>
                                             <DataGridTextColumn Header="RATE (₹)" Binding="{Binding UnitPrice, StringFormat='₹{0:N2}'}" Width="80"/>
+                                            <DataGridTextColumn Header="DISCOUNT" Binding="{Binding DiscountAmount, StringFormat='₹{0:N2}'}" Width="75"/>
                                             <DataGridTextColumn Header="TAXABLE" Binding="{Binding TaxableValue, StringFormat='₹{0:N2}'}" Width="80"/>
                                             <DataGridTextColumn Header="GST" Binding="{Binding GSTRate, StringFormat='{}{0}%'}" Width="50"/>
                                             <DataGridTextColumn Header="AMOUNT (₹)" Binding="{Binding TotalAmount, StringFormat='₹{0:N2}'}" Width="85"/>
@@ -1884,6 +1959,14 @@
                                         <!-- Right: Tax & Grand Total -->
                                         <Border Grid.Column="2" Background="#F8FAFC" BorderBrush="#94A3B8" BorderThickness="1" CornerRadius="4" Padding="12">
                                             <StackPanel>
+                                                <Grid Margin="0,2">
+                                                    <TextBlock Text="Gross Subtotal:" Foreground="#475569" FontSize="11"/>
+                                                    <TextBlock Text="{Binding SelectedPrintInvoice.SubTotal, StringFormat='₹{0:N2}'}" Foreground="#0F172A" FontSize="11" HorizontalAlignment="Right"/>
+                                                </Grid>
+                                                <Grid Margin="0,2">
+                                                    <TextBlock Text="Discount Applied (Admin):" Foreground="#D97706" FontSize="11" FontWeight="SemiBold"/>
+                                                    <TextBlock Text="{Binding SelectedPrintInvoice.TotalDiscount, StringFormat='-₹{0:N2}'}" Foreground="#D97706" FontSize="11" FontWeight="Bold" HorizontalAlignment="Right"/>
+                                                </Grid>
                                                 <Grid Margin="0,2">
                                                     <TextBlock Text="Taxable Subtotal:" Foreground="#475569" FontSize="11"/>
                                                     <TextBlock Text="{Binding SelectedPrintInvoice.TaxableAmount, StringFormat='₹{0:N2}'}" Foreground="#0F172A" FontSize="11" FontWeight="SemiBold" HorizontalAlignment="Right"/>
@@ -1976,14 +2059,20 @@
                                             <ColumnDefinition Width="*"/>
                                             <ColumnDefinition Width="*"/>
                                         </Grid.ColumnDefinitions>
-                                        <StackPanel Grid.Column="0" Orientation="Horizontal">
-                                            <TextBlock Text="Customer: " Foreground="#64748B" FontSize="10"/>
-                                            <TextBlock Text="{Binding SelectedPrintInvoice.CustomerName}" Foreground="#0F172A" FontSize="10" FontWeight="Bold"/>
-                                            <TextBlock Text=" (" Foreground="#64748B" FontSize="10"/>
-                                            <TextBlock Text="{Binding SelectedPrintInvoice.CustomerPhone}" Foreground="#0F172A" FontSize="10"/>
-                                            <TextBlock Text=")" Foreground="#64748B" FontSize="10"/>
+                                        <StackPanel Grid.Column="0">
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="Customer: " Foreground="#64748B" FontSize="10"/>
+                                                <TextBlock Text="{Binding SelectedPrintInvoice.CustomerName}" Foreground="#0F172A" FontSize="10" FontWeight="Bold"/>
+                                                <TextBlock Text=" (" Foreground="#64748B" FontSize="10"/>
+                                                <TextBlock Text="{Binding SelectedPrintInvoice.CustomerPhone}" Foreground="#0F172A" FontSize="10"/>
+                                                <TextBlock Text=")" Foreground="#64748B" FontSize="10"/>
+                                            </StackPanel>
+                                            <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
+                                                <TextBlock Text="Cust GSTIN: " Foreground="#64748B" FontSize="9"/>
+                                                <TextBlock Text="{Binding SelectedPrintInvoice.CustomerGSTIN, FallbackValue='B2C / Unregistered', TargetNullValue='B2C / Unregistered'}" Foreground="#0F172A" FontSize="9" FontWeight="SemiBold"/>
+                                            </StackPanel>
                                         </StackPanel>
-                                        <StackPanel Grid.Column="1" HorizontalAlignment="Right" Orientation="Horizontal">
+                                        <StackPanel Grid.Column="1" HorizontalAlignment="Right" Orientation="Horizontal" VerticalAlignment="Center">
                                             <TextBlock Text="Payment: " Foreground="#64748B" FontSize="10"/>
                                             <TextBlock Text="{Binding SelectedPrintInvoice.PaymentMethod}" Foreground="#16A34A" FontSize="10" FontWeight="Bold"/>
                                         </StackPanel>
@@ -2024,6 +2113,7 @@
                                             <DataGridTextColumn Header="HSN" Binding="{Binding HSNCode}" Width="55"/>
                                             <DataGridTextColumn Header="QTY" Binding="{Binding Quantity}" Width="40"/>
                                             <DataGridTextColumn Header="RATE" Binding="{Binding UnitPrice, StringFormat='₹{0:N2}'}" Width="65"/>
+                                            <DataGridTextColumn Header="DISC" Binding="{Binding DiscountAmount, StringFormat='₹{0:N2}'}" Width="55"/>
                                             <DataGridTextColumn Header="GST" Binding="{Binding GSTRate, StringFormat='{}{0}%'}" Width="40"/>
                                             <DataGridTextColumn Header="AMOUNT" Binding="{Binding TotalAmount, StringFormat='₹{0:N2}'}" Width="75"/>
                                         </DataGrid.Columns>
@@ -2040,6 +2130,10 @@
                                             <TextBlock Text="Thank you for your visit!" Foreground="#64748B" FontSize="8" Margin="0,4,0,0" FontStyle="Italic"/>
                                         </StackPanel>
                                         <StackPanel Grid.Column="1">
+                                            <Grid Margin="0,1">
+                                                <TextBlock Text="Discount Applied:" Foreground="#D97706" FontSize="10"/>
+                                                <TextBlock Text="{Binding SelectedPrintInvoice.TotalDiscount, StringFormat='-₹{0:N2}'}" Foreground="#D97706" FontSize="10" FontWeight="SemiBold" HorizontalAlignment="Right"/>
+                                            </Grid>
                                             <Grid Margin="0,1">
                                                 <TextBlock Text="Subtotal (Taxable):" Foreground="#64748B" FontSize="10"/>
                                                 <TextBlock Text="{Binding SelectedPrintInvoice.TaxableAmount, StringFormat='₹{0:N2}'}" Foreground="#0F172A" FontSize="10" HorizontalAlignment="Right"/>
@@ -2095,6 +2189,10 @@
                                         <TextBlock Text="{Binding SelectedPrintInvoice.CustomerName}" Foreground="#000000" FontSize="9" FontWeight="SemiBold" HorizontalAlignment="Right"/>
                                     </Grid>
                                     <Grid Margin="0,1">
+                                        <TextBlock Text="Cust GSTIN:" Foreground="#444444" FontSize="9"/>
+                                        <TextBlock Text="{Binding SelectedPrintInvoice.CustomerGSTIN, FallbackValue='-', TargetNullValue='-'}" Foreground="#000000" FontSize="9" FontWeight="SemiBold" HorizontalAlignment="Right"/>
+                                    </Grid>
+                                    <Grid Margin="0,1">
                                         <TextBlock Text="Cashier:" Foreground="#444444" FontSize="9"/>
                                         <TextBlock Text="{Binding SelectedPrintInvoice.CashierUsername}" Foreground="#000000" FontSize="9" HorizontalAlignment="Right"/>
                                     </Grid>
@@ -2143,6 +2241,14 @@
                                     <TextBlock Text="----------------------------------------" Foreground="#000000" FontSize="10" TextAlignment="Center" Margin="0,4,0,4"/>
 
                                     <!-- Totals -->
+                                    <Grid Margin="0,1">
+                                        <TextBlock Text="Gross Subtotal:" Foreground="#444444" FontSize="9"/>
+                                        <TextBlock Text="{Binding SelectedPrintInvoice.SubTotal, StringFormat='₹{0:N2}'}" Foreground="#000000" FontSize="9" HorizontalAlignment="Right"/>
+                                    </Grid>
+                                    <Grid Margin="0,1">
+                                        <TextBlock Text="Discount (Admin):" Foreground="#444444" FontSize="9"/>
+                                        <TextBlock Text="{Binding SelectedPrintInvoice.TotalDiscount, StringFormat='-₹{0:N2}'}" Foreground="#000000" FontSize="9" FontWeight="Bold" HorizontalAlignment="Right"/>
+                                    </Grid>
                                     <Grid Margin="0,1">
                                         <TextBlock Text="Taxable Subtotal:" Foreground="#444444" FontSize="9"/>
                                         <TextBlock Text="{Binding SelectedPrintInvoice.TaxableAmount, StringFormat='₹{0:N2}'}" Foreground="#000000" FontSize="9" HorizontalAlignment="Right"/>

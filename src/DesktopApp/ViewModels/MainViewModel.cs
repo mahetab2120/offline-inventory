@@ -251,6 +251,22 @@ public partial class MainViewModel : ObservableObject
     private string customerPhone = string.Empty;
 
     [ObservableProperty]
+    private string customerGstin = string.Empty;
+
+    // --- Discount Management (Restricted to Business Admin & Authorized Users) ---
+    [ObservableProperty]
+    private string discountType = "Flat"; // "Flat" (₹) or "Percentage" (%)
+
+    [ObservableProperty]
+    private decimal discountValue = 0;
+
+    [ObservableProperty]
+    private decimal posGrossTotal = 0;
+
+    [ObservableProperty]
+    private decimal posDiscountTotal = 0;
+
+    [ObservableProperty]
     private decimal posSubTotal = 0;
 
     [ObservableProperty]
@@ -258,6 +274,31 @@ public partial class MainViewModel : ObservableObject
 
     [ObservableProperty]
     private decimal posGrandTotal = 0;
+
+    public bool CanApplyDiscount => CurrentUser?.Role == UserRole.BusinessAdmin ||
+                                   CurrentUser?.Role == UserRole.SuperAdmin_CA ||
+                                   (CurrentUser?.Permissions.HasFlag(SystemPermissions.ApplyDiscount) ?? false);
+
+    public string DiscountPermissionStatusText => CanApplyDiscount
+        ? "🟢 Discount Authorized (Business Admin)"
+        : "🔒 Discount Locked (Business Admin Only)";
+
+    partial void OnCurrentUserChanged(User? value)
+    {
+        OnPropertyChanged(nameof(CanApplyDiscount));
+        OnPropertyChanged(nameof(DiscountPermissionStatusText));
+        RecalculateCartTotals();
+    }
+
+    partial void OnDiscountValueChanged(decimal value)
+    {
+        RecalculateCartTotals();
+    }
+
+    partial void OnDiscountTypeChanged(string value)
+    {
+        RecalculateCartTotals();
+    }
 
     [ObservableProperty]
     private string posStatusMessage = string.Empty;
@@ -588,6 +629,9 @@ public partial class MainViewModel : ObservableObject
 
     [ObservableProperty]
     private bool permCanPerformBilling = true;
+
+    [ObservableProperty]
+    private bool permCanApplyDiscount = false;
 
     [ObservableProperty]
     private bool permCanViewReports = false;
@@ -1220,33 +1264,75 @@ Modules Enabled:  {string.Join(", ", payload.EnabledModules)}";
     }
 
     [RelayCommand]
+    private void SetDiscountType(string type)
+    {
+        DiscountType = type;
+        RecalculateCartTotals();
+    }
+
+    [RelayCommand]
     private void ClearCart()
     {
         PosCartItems.Clear();
+        DiscountValue = 0;
+        PosDiscountTotal = 0;
+        CustomerName = "Walk-in Customer";
+        CustomerPhone = string.Empty;
+        CustomerGstin = string.Empty;
         RecalculateCartTotals();
         PosStatusMessage = "Cart cleared.";
     }
 
     private void RecalculateCartTotals()
     {
+        decimal grossSum = 0;
+        foreach (var item in PosCartItems)
+        {
+            grossSum += item.Quantity * item.UnitPrice;
+        }
+        PosGrossTotal = Math.Round(grossSum, 2);
+
+        decimal discountAmount = 0;
+        if (CanApplyDiscount && DiscountValue > 0 && grossSum > 0)
+        {
+            if (DiscountType == "Percentage" || DiscountType == "%")
+            {
+                decimal pct = Math.Clamp(DiscountValue, 0, 100);
+                discountAmount = Math.Round(grossSum * (pct / 100m), 2);
+            }
+            else
+            {
+                discountAmount = Math.Round(Math.Clamp(DiscountValue, 0, grossSum), 2);
+            }
+        }
+        PosDiscountTotal = discountAmount;
+
         decimal subTotal = 0;
         decimal taxTotal = 0;
         decimal grandTotal = 0;
 
         foreach (var item in PosCartItems)
         {
-            decimal lineTotal = item.Quantity * item.UnitPrice;
-            decimal lineTaxable = lineTotal / (1 + (item.GSTRate / 100));
-            decimal lineTax = lineTotal - lineTaxable;
+            decimal itemGross = item.Quantity * item.UnitPrice;
+            decimal itemDiscount = 0;
+            if (grossSum > 0 && discountAmount > 0)
+            {
+                itemDiscount = Math.Round(discountAmount * (itemGross / grossSum), 2);
+            }
+            item.DiscountAmount = itemDiscount;
 
-            item.TaxableValue = lineTaxable;
-            item.CGSTAmount = lineTax / 2;
-            item.SGSTAmount = lineTax / 2;
-            item.TotalAmount = lineTotal;
+            decimal effectiveLineTotal = Math.Max(0, itemGross - itemDiscount);
+            decimal lineTaxable = effectiveLineTotal / (1 + (item.GSTRate / 100m));
+            decimal lineTax = effectiveLineTotal - lineTaxable;
 
-            subTotal += lineTaxable;
-            taxTotal += lineTax;
-            grandTotal += lineTotal;
+            item.TaxableValue = Math.Round(lineTaxable, 2);
+            item.CGSTAmount = Math.Round(lineTax / 2, 2);
+            item.SGSTAmount = Math.Round(lineTax / 2, 2);
+            item.TotalAmount = Math.Round(effectiveLineTotal, 2);
+
+            subTotal += item.TaxableValue;
+            taxTotal += item.CGSTAmount + item.SGSTAmount;
+            grandTotal += item.TotalAmount;
         }
 
         PosSubTotal = Math.Round(subTotal, 2);
@@ -1263,9 +1349,12 @@ Modules Enabled:  {string.Join(", ", payload.EnabledModules)}";
             return;
         }
 
+        string custName = string.IsNullOrWhiteSpace(CustomerName) ? "Walk-in Customer" : CustomerName.Trim();
+        string discountDetail = PosDiscountTotal > 0 ? $" (Discount Applied: -₹{PosDiscountTotal:N2})" : string.Empty;
+
         ShowAsyncConfirmation(
             "Confirm POS Bill Settlement",
-            $"Settle POS Invoice for {CustomerName} of Total Amount ₹{PosGrandTotal:N2} via {SelectedPaymentMethod}?",
+            $"Settle POS Invoice for {custName} of Grand Total ₹{PosGrandTotal:N2}{discountDetail} via {SelectedPaymentMethod}?",
             async () =>
             {
                 try
@@ -1275,10 +1364,12 @@ Modules Enabled:  {string.Join(", ", payload.EnabledModules)}";
                     var invoice = new Invoice
                     {
                         InvoiceNumber = invNumber,
-                        CustomerName = string.IsNullOrWhiteSpace(CustomerName) ? "Walk-in Customer" : CustomerName.Trim(),
+                        CustomerName = custName,
                         CustomerPhone = CustomerPhone?.Trim() ?? string.Empty,
+                        CustomerGSTIN = string.IsNullOrWhiteSpace(CustomerGstin) ? null : CustomerGstin.Trim().ToUpperInvariant(),
                         InvoiceDateUtc = DateTime.UtcNow,
-                        SubTotal = PosSubTotal,
+                        SubTotal = PosGrossTotal > 0 ? PosGrossTotal : PosSubTotal,
+                        TotalDiscount = PosDiscountTotal,
                         TaxableAmount = PosSubTotal,
                         TotalCGST = PosTaxTotal / 2,
                         TotalSGST = PosTaxTotal / 2,
@@ -1295,9 +1386,12 @@ Modules Enabled:  {string.Join(", ", payload.EnabledModules)}";
                     {
                         PosStatusMessage = $"✅ Invoice #{invNumber} generated & settled successfully (₹{PosGrandTotal:N2})!";
                         PosCartItems.Clear();
+                        DiscountValue = 0;
+                        PosDiscountTotal = 0;
                         RecalculateCartTotals();
                         CustomerName = "Walk-in Customer";
                         CustomerPhone = string.Empty;
+                        CustomerGstin = string.Empty;
 
                         await LoadDashboardDataAsync();
 
@@ -1339,6 +1433,7 @@ Modules Enabled:  {string.Join(", ", payload.EnabledModules)}";
                 inv.InvoiceNumber.ToLowerInvariant().Contains(q) ||
                 inv.CustomerName.ToLowerInvariant().Contains(q) ||
                 (inv.CustomerPhone != null && inv.CustomerPhone.ToLowerInvariant().Contains(q)) ||
+                (inv.CustomerGSTIN != null && inv.CustomerGSTIN.ToLowerInvariant().Contains(q)) ||
                 inv.PaymentMethod.ToString().ToLowerInvariant().Contains(q));
 
         foreach (var inv in matches)
@@ -1354,6 +1449,23 @@ Modules Enabled:  {string.Join(", ", payload.EnabledModules)}";
         if (tab == "History")
         {
             RefreshFilteredInvoices();
+        }
+    }
+
+    partial void OnSelectedPrinterChanged(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return;
+
+        string p = value.ToLowerInvariant();
+        if (p.Contains("pdf") || p.Contains("xps") || p.Contains("laser") || p.Contains("deskjet") || p.Contains("hp") || p.Contains("canon") || p.Contains("brother") || p.Contains("epson l") || p.Contains("one note"))
+        {
+            // Auto switch preview to A4 Full Page format for PDF & document printers!
+            PrintPreviewMode = "A4";
+        }
+        else if (p.Contains("thermal") || p.Contains("pos") || p.Contains("80mm") || p.Contains("58mm") || p.Contains("receipt") || p.Contains("tvs") || p.Contains("rp") || p.Contains("tm-t"))
+        {
+            // Auto switch preview to 80mm Thermal POS format!
+            PrintPreviewMode = "Thermal";
         }
     }
 
@@ -1373,7 +1485,22 @@ Modules Enabled:  {string.Join(", ", payload.EnabledModules)}";
 
         SelectedPrintInvoice = inv;
         InvoiceAmountInWords = CurrencyWordsHelper.ConvertToIndianRupeesWords(inv.GrandTotal);
-        PrintPreviewMode = string.IsNullOrEmpty(DefaultPrintFormat) ? "A4" : DefaultPrintFormat;
+
+        // Auto-match preview format to selected printer device
+        string p = (SelectedPrinter ?? string.Empty).ToLowerInvariant();
+        if (p.Contains("pdf") || p.Contains("xps") || p.Contains("laser") || p.Contains("hp") || p.Contains("canon"))
+        {
+            PrintPreviewMode = "A4";
+        }
+        else if (p.Contains("thermal") || p.Contains("pos") || p.Contains("receipt") || p.Contains("tvs") || p.Contains("80mm"))
+        {
+            PrintPreviewMode = "Thermal";
+        }
+        else
+        {
+            PrintPreviewMode = string.IsNullOrEmpty(DefaultPrintFormat) ? "A4" : DefaultPrintFormat;
+        }
+
         IsPrintPreviewModalOpen = true;
     }
 
@@ -2024,6 +2151,7 @@ Modules Enabled:  {string.Join(", ", payload.EnabledModules)}";
                 SystemPermissions perms = SystemPermissions.ViewDashboard;
                 if (PermCanManageInventory) perms |= SystemPermissions.ManageInventory;
                 if (PermCanPerformBilling) perms |= SystemPermissions.CreateInvoice | SystemPermissions.PrintInvoice;
+                if (PermCanApplyDiscount) perms |= SystemPermissions.ApplyDiscount;
                 if (PermCanViewReports) perms |= SystemPermissions.ViewReports;
                 if (PermCanExportCaData) perms |= SystemPermissions.ExportCAData;
                 if (PermCanManageUsers) perms |= SystemPermissions.ManageUsers;
