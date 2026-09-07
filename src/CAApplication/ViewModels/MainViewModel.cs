@@ -1,6 +1,8 @@
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
+using System.Text;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Windows;
 using Application.Interfaces;
@@ -113,6 +115,32 @@ public class ValidityOption
 {
     public string DisplayText { get; set; } = string.Empty;
     public int Months { get; set; }
+}
+
+public class GstHsnSummaryItem
+{
+    public string HSNCode { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public string UQC { get; set; } = "PCS";
+    public decimal TotalQuantity { get; set; }
+    public decimal TotalValue { get; set; }
+    public decimal TaxableValue { get; set; }
+    public decimal GstRate { get; set; }
+    public decimal CentralTaxAmount { get; set; }
+    public decimal StateTaxAmount { get; set; }
+    public decimal IntegratedTaxAmount { get; set; }
+    public decimal TotalTaxAmount => CentralTaxAmount + StateTaxAmount + IntegratedTaxAmount;
+}
+
+public class GstRateBreakdownItem
+{
+    public string RateLabel { get; set; } = string.Empty;
+    public decimal GstRate { get; set; }
+    public decimal TaxableAmount { get; set; }
+    public decimal CGSTAmount { get; set; }
+    public decimal SGSTAmount { get; set; }
+    public decimal IGSTAmount { get; set; }
+    public decimal TotalTaxAmount => CGSTAmount + SGSTAmount + IGSTAmount;
 }
 
 public partial class MainViewModel : ObservableObject
@@ -316,6 +344,98 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private DateTime updateCalculatedExpiryDate = DateTime.UtcNow.AddMonths(3);
 
+    // --- TAB 4: License Renewals State ---
+    [ObservableProperty]
+    private ClientDisplayItem? selectedRenewalClient;
+
+    [ObservableProperty]
+    private SubscriptionTier renewalSelectedPlan = SubscriptionTier.Premium;
+
+    [ObservableProperty]
+    private ValidityOption? renewalSelectedValidity;
+
+    [ObservableProperty]
+    private DateTime renewalCalculatedExpiryDate = DateTime.UtcNow.AddMonths(12);
+
+    [ObservableProperty]
+    private string renewalStatusMessage = string.Empty;
+
+    [ObservableProperty]
+    private string lastExportedLicensePath = string.Empty;
+
+    [ObservableProperty]
+    private string lastExportedLicenseFileName = string.Empty;
+
+    [ObservableProperty]
+    private string renewalSummaryText = string.Empty;
+
+    [ObservableProperty]
+    private bool isLicenseRenewalGenerated = false;
+
+    // --- TAB 5: Decrypt Client Audit State ---
+    [ObservableProperty]
+    private string selectedAuditFilePath = string.Empty;
+
+    [ObservableProperty]
+    private string decryptStatusMessage = string.Empty;
+
+    [ObservableProperty]
+    private bool isAuditPackageDecrypted = false;
+
+    [ObservableProperty]
+    private string auditBusinessCode = string.Empty;
+
+    [ObservableProperty]
+    private string auditLegalName = string.Empty;
+
+    [ObservableProperty]
+    private string auditGstin = string.Empty;
+
+    [ObservableProperty]
+    private string auditAccountingPeriod = string.Empty;
+
+    [ObservableProperty]
+    private DateTime auditExportTimestamp = DateTime.UtcNow;
+
+    [ObservableProperty]
+    private int auditTotalInvoices = 0;
+
+    [ObservableProperty]
+    private decimal auditTotalRevenue = 0;
+
+    [ObservableProperty]
+    private decimal auditTaxableTurnover = 0;
+
+    [ObservableProperty]
+    private decimal auditTotalCgst = 0;
+
+    [ObservableProperty]
+    private decimal auditTotalSgst = 0;
+
+    [ObservableProperty]
+    private decimal auditTotalIgst = 0;
+
+    [ObservableProperty]
+    private decimal auditTotalTax = 0;
+
+    [ObservableProperty]
+    private int auditTotalProducts = 0;
+
+    [ObservableProperty]
+    private decimal auditInventoryValuation = 0;
+
+    [ObservableProperty]
+    private int auditLogsCount = 0;
+
+    [ObservableProperty]
+    private string auditActiveSubTab = "Invoices"; // Invoices, TaxSummary, Inventory, AuditLogs
+
+    public ObservableCollection<Invoice> DecryptedAuditInvoices { get; } = new();
+    public ObservableCollection<Product> DecryptedAuditProducts { get; } = new();
+    public ObservableCollection<AuditLog> DecryptedAuditLogs { get; } = new();
+    public ObservableCollection<GstHsnSummaryItem> DecryptedGstHsnSummaries { get; } = new();
+    public ObservableCollection<GstRateBreakdownItem> DecryptedGstRateBreakdowns { get; } = new();
+
     public ObservableCollection<ValidityOption> ValidityOptions { get; } = new()
     {
         new ValidityOption { DisplayText = "+1 Month (30 Days Extension)", Months = 1 },
@@ -372,6 +492,32 @@ public partial class MainViewModel : ObservableObject
             : DateTime.UtcNow;
 
         UpdateCalculatedExpiryDate = baseDate.AddMonths(monthsToAdd);
+    }
+
+    partial void OnSelectedRenewalClientChanged(ClientDisplayItem? value)
+    {
+        if (value != null)
+        {
+            RenewalSelectedPlan = value.SubscriptionPlan;
+        }
+        RecalculateRenewalExpiry();
+    }
+
+    partial void OnRenewalSelectedValidityChanged(ValidityOption? value)
+    {
+        RecalculateRenewalExpiry();
+    }
+
+    private void RecalculateRenewalExpiry()
+    {
+        if (SelectedRenewalClient == null) return;
+
+        int monthsToAdd = RenewalSelectedValidity?.Months ?? 12;
+        DateTime baseDate = SelectedRenewalClient.ExpiryDateUtc > DateTime.UtcNow 
+            ? SelectedRenewalClient.ExpiryDateUtc 
+            : DateTime.UtcNow;
+
+        RenewalCalculatedExpiryDate = baseDate.AddMonths(monthsToAdd);
     }
 
     // Auto-uppercase and PAN sync triggers
@@ -715,6 +861,18 @@ public partial class MainViewModel : ObservableObject
         if (tabNameObj is string tabName)
         {
             CurrentTab = tabName;
+            if (tabName == "Renewals")
+            {
+                if (SelectedRenewalClient == null && AllClients.Count > 0)
+                {
+                    SelectedRenewalClient = AllClients.FirstOrDefault(c => c.DaysRemaining <= 14) ?? AllClients.First();
+                }
+                if (RenewalSelectedValidity == null && ValidityOptions.Count > 3)
+                {
+                    RenewalSelectedValidity = ValidityOptions[3]; // +12 Months default
+                }
+                RecalculateRenewalExpiry();
+            }
         }
     }
 
@@ -1515,5 +1673,450 @@ Key File:         Client_{client.BusinessCode}_DataKey.key";
             },
             "🧹 Clear Form",
             "#64748B");
+    }
+
+    // =========================================================================
+    // TAB 4: LICENSE RENEWALS & EXTENSIONS COMMANDS
+    // =========================================================================
+
+    [RelayCommand]
+    private void SelectClientForRenewal(object? clientObj)
+    {
+        if (clientObj is ClientDisplayItem client)
+        {
+            SelectedRenewalClient = client;
+            RenewalSelectedPlan = client.SubscriptionPlan;
+            if (RenewalSelectedValidity == null && ValidityOptions.Count > 3)
+            {
+                RenewalSelectedValidity = ValidityOptions[3];
+            }
+            RecalculateRenewalExpiry();
+            CurrentTab = "Renewals";
+        }
+    }
+
+    [RelayCommand]
+    private async Task GenerateLicenseRenewalPackage()
+    {
+        if (SelectedRenewalClient == null)
+        {
+            RenewalStatusMessage = "Please select a registered client business to renew.";
+            return;
+        }
+
+        var client = SelectedRenewalClient;
+        var newPlan = RenewalSelectedPlan;
+        var newExpiry = RenewalCalculatedExpiryDate;
+
+        try
+        {
+            var payload = new LicenseRenewalPayload
+            {
+                LicenseId = Guid.NewGuid().ToString("N"),
+                BusinessCode = client.BusinessCode,
+                Plan = newPlan,
+                IssuedDateUtc = DateTime.UtcNow,
+                ExpiryDateUtc = newExpiry,
+                GracePeriodDays = 7,
+                MaxUsers = newPlan == SubscriptionTier.Enterprise ? 50 : 10,
+                MaxBranches = newPlan == SubscriptionTier.Enterprise ? 10 : 1,
+                MaxProducts = newPlan == SubscriptionTier.Enterprise ? 100000 : 25000,
+                EnabledModules = new List<string> { "Billing", "Inventory", "GSTReports", "RackManagement", "OfflineExchange" }
+            };
+
+            if (client.BusinessType == BusinessType.Pharmacy)
+            {
+                payload.EnabledModules.Add("PharmacyBatchExpiry");
+            }
+
+            // Generate cryptographically signed Base64 license certificate using CA RSA Master Private Key
+            string licContent = _keyService.GenerateLicenseRenewal(payload, _caPrivateKeyPem);
+
+            string exportDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "GeneratedLicenses");
+            Directory.CreateDirectory(exportDir);
+            string fileName = $"License_{client.BusinessCode}_{DateTime.UtcNow:yyyyMMdd}.lic";
+            string filePath = Path.Combine(exportDir, fileName);
+
+            File.WriteAllText(filePath, licContent);
+
+            try
+            {
+                string rootLicDir = Path.Combine(Directory.GetCurrentDirectory(), "GeneratedLicenses");
+                Directory.CreateDirectory(rootLicDir);
+                File.WriteAllText(Path.Combine(rootLicDir, fileName), licContent);
+            }
+            catch { }
+
+            // Update client entity in memory & database
+            client.SubscriptionPlan = newPlan;
+            client.ExpiryDateUtc = newExpiry;
+            client.IsSuspended = false;
+            client.NotifyStatusChanged();
+
+            try
+            {
+                await _licenseRepo.SaveLicenseAsync(new LicenseRecord
+                {
+                    LicenseKey = payload.LicenseId,
+                    BusinessCode = client.BusinessCode,
+                    Plan = newPlan,
+                    IssuedDateUtc = payload.IssuedDateUtc,
+                    ExpiryDateUtc = payload.ExpiryDateUtc,
+                    GracePeriodDays = payload.GracePeriodDays,
+                    MaxUsers = payload.MaxUsers,
+                    MaxProducts = payload.MaxProducts,
+                    Status = LicenseStatus.Active,
+                    Signature = payload.Signature
+                });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[CAApplication] Database license save notice: {ex.Message}");
+            }
+
+            LastExportedLicensePath = filePath;
+            LastExportedLicenseFileName = fileName;
+            IsLicenseRenewalGenerated = true;
+
+            RenewalSummaryText = 
+$@"=== AFS RSA-4096 SIGNED LICENSE RENEWAL CERTIFICATE (.lic) ===
+Business Code:       {client.BusinessCode}
+Legal Entity:        {client.LegalName}
+Trade Name:          {client.TradeName}
+GSTIN / PAN:         {client.GSTIN} / {client.PAN}
+Subscription Plan:   {newPlan} Tier
+New Expiry Date:     {newExpiry:dd-MMM-yyyy} ({client.DaysRemaining} Days Active)
+License ID:          {payload.LicenseId}
+Certificate Status:  Digitally Signed with AFS CA RSA-4096 Key
+Generated File:      {filePath}
+
+Client Activation Instructions:
+1. Deliver this '{fileName}' certificate file to the store owner / administrator.
+2. In AFS Desktop Business App, the license will be verified offline with zero internet requirement.";
+
+            RenewalStatusMessage = $"✅ License certificate '{fileName}' generated successfully for {client.TradeName}!";
+            CalculateKpis();
+            RefreshFilteredClients();
+
+            try
+            {
+                Process.Start("explorer.exe", $"/select,\"{filePath}\"");
+            }
+            catch { }
+        }
+        catch (Exception ex)
+        {
+            RenewalStatusMessage = $"❌ Error issuing license: {ex.Message}";
+        }
+    }
+
+    [RelayCommand]
+    private void OpenLicenseFolder()
+    {
+        try
+        {
+            if (File.Exists(LastExportedLicensePath))
+            {
+                Process.Start("explorer.exe", $"/select,\"{LastExportedLicensePath}\"");
+            }
+            else
+            {
+                string dir = Path.GetDirectoryName(LastExportedLicensePath) ?? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "GeneratedLicenses");
+                if (!Directory.Exists(dir)) Directory.CreateDirectory(dir);
+                Process.Start("explorer.exe", dir);
+            }
+        }
+        catch (Exception ex)
+        {
+            RenewalStatusMessage = $"Could not open folder: {ex.Message}";
+        }
+    }
+
+    [RelayCommand]
+    private void CopyLicenseSummary()
+    {
+        try
+        {
+            Clipboard.SetText(RenewalSummaryText);
+            RenewalStatusMessage = "📋 License Renewal Summary copied to clipboard!";
+        }
+        catch (Exception ex)
+        {
+            RenewalStatusMessage = $"Could not copy to clipboard: {ex.Message}";
+        }
+    }
+
+    // =========================================================================
+    // TAB 5: DECRYPT CLIENT COMMERCIAL AUDIT (.afspkg / .enc) COMMANDS
+    // =========================================================================
+
+    [RelayCommand]
+    private void BrowseAuditPackageFile()
+    {
+        var dlg = new Microsoft.Win32.OpenFileDialog
+        {
+            Title = "Select AFS Commercial Encrypted Audit Package (.afspkg / .enc / .json)",
+            Filter = "AFS Audit Packages (*.afspkg;*.enc;*.json;*.dat)|*.afspkg;*.enc;*.json;*.dat|All Files (*.*)|*.*"
+        };
+
+        string defaultDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Exports");
+        if (Directory.Exists(defaultDir))
+        {
+            dlg.InitialDirectory = defaultDir;
+        }
+        else
+        {
+            dlg.InitialDirectory = Directory.GetCurrentDirectory();
+        }
+
+        if (dlg.ShowDialog() == true)
+        {
+            SelectedAuditFilePath = dlg.FileName;
+            DecryptStatusMessage = $"Selected file: {Path.GetFileName(dlg.FileName)}. Click '🔓 Decrypt & Inspect Package' to proceed.";
+        }
+    }
+
+    [RelayCommand]
+    private void SwitchAuditSubTab(object? subTabObj)
+    {
+        if (subTabObj is string subTab)
+        {
+            AuditActiveSubTab = subTab;
+        }
+    }
+
+    [RelayCommand]
+    private void ExecuteDecryptAuditPackage()
+    {
+        if (string.IsNullOrWhiteSpace(SelectedAuditFilePath) || !File.Exists(SelectedAuditFilePath))
+        {
+            DecryptStatusMessage = "Please select a valid .afspkg or .enc package file first.";
+            return;
+        }
+
+        try
+        {
+            string rawContent = File.ReadAllText(SelectedAuditFilePath).Trim();
+            string plainJson = string.Empty;
+
+            // Check if rawContent is an encrypted JSON package
+            using var jsonDoc = JsonDocument.Parse(rawContent);
+            var root = jsonDoc.RootElement;
+
+            if (root.TryGetProperty("Ciphertext", out var cipherProp) &&
+                root.TryGetProperty("Nonce", out var nonceProp) &&
+                root.TryGetProperty("Tag", out var tagProp))
+            {
+                byte[] cipherBytes = Convert.FromBase64String(cipherProp.GetString()!);
+                byte[] nonceBytes = Convert.FromBase64String(nonceProp.GetString()!);
+                byte[] tagBytes = Convert.FromBase64String(tagProp.GetString()!);
+
+                var aesGcm = new AesGcmService();
+                byte[] masterKey = Encoding.UTF8.GetBytes("AFS_MASTER_COMMERCIAL_KEY_2026!!");
+                byte[] decryptedBytes = aesGcm.Decrypt(cipherBytes, nonceBytes, tagBytes, masterKey);
+                plainJson = Encoding.UTF8.GetString(decryptedBytes);
+            }
+            else
+            {
+                plainJson = rawContent;
+            }
+
+            // Parse inner JSON payload
+            using var innerDoc = JsonDocument.Parse(plainJson);
+            var innerRoot = innerDoc.RootElement;
+
+            // Clear existing collections
+            DecryptedAuditInvoices.Clear();
+            DecryptedAuditProducts.Clear();
+            DecryptedAuditLogs.Clear();
+            DecryptedGstHsnSummaries.Clear();
+            DecryptedGstRateBreakdowns.Clear();
+
+            // 1. Read Metadata
+            if (innerRoot.TryGetProperty("ExportMetadata", out var metaProp))
+            {
+                AuditBusinessCode = metaProp.TryGetProperty("BusinessCode", out var bc) ? bc.GetString() ?? "" : "";
+                AuditLegalName = metaProp.TryGetProperty("LegalName", out var ln) ? ln.GetString() ?? "" : "";
+                AuditGstin = metaProp.TryGetProperty("GSTIN", out var gst) ? gst.GetString() ?? "" : "";
+                AuditAccountingPeriod = metaProp.TryGetProperty("AccountingPeriod", out var ap) ? ap.GetString() ?? "" : "";
+                AuditExportTimestamp = metaProp.TryGetProperty("ExportTimestampUtc", out var ts) ? ts.GetDateTime() : DateTime.UtcNow;
+                AuditTotalInvoices = metaProp.TryGetProperty("TotalInvoices", out var ti) ? ti.GetInt32() : 0;
+                AuditTotalRevenue = metaProp.TryGetProperty("TotalRevenue", out var tr) ? tr.GetDecimal() : 0;
+                AuditTaxableTurnover = metaProp.TryGetProperty("TaxableTurnover", out var tt) ? tt.GetDecimal() : 0;
+                AuditTotalCgst = metaProp.TryGetProperty("CGST", out var cg) ? cg.GetDecimal() : 0;
+                AuditTotalSgst = metaProp.TryGetProperty("SGST", out var sg) ? sg.GetDecimal() : 0;
+                AuditTotalIgst = metaProp.TryGetProperty("IGST", out var ig) ? ig.GetDecimal() : 0;
+                AuditTotalTax = metaProp.TryGetProperty("TotalTax", out var tx) ? tx.GetDecimal() : 0;
+                AuditTotalProducts = metaProp.TryGetProperty("TotalProducts", out var tp) ? tp.GetInt32() : 0;
+                AuditInventoryValuation = metaProp.TryGetProperty("InventoryValuation", out var iv) ? iv.GetDecimal() : 0;
+                AuditLogsCount = metaProp.TryGetProperty("AuditRecordsCount", out var al) ? al.GetInt32() : 0;
+            }
+
+            // 2. Read Invoices
+            if (innerRoot.TryGetProperty("Invoices", out var invoicesProp))
+            {
+                var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                var invoices = JsonSerializer.Deserialize<List<Invoice>>(invoicesProp.GetRawText(), options);
+                if (invoices != null)
+                {
+                    foreach (var inv in invoices)
+                    {
+                        DecryptedAuditInvoices.Add(inv);
+                    }
+
+                    // Compute HSN Summaries from invoice items
+                    var hsnGroups = invoices.SelectMany(i => i.Items ?? new List<InvoiceItem>())
+                        .GroupBy(item => string.IsNullOrWhiteSpace(item.HSNCode) ? "HSN-GEN" : item.HSNCode);
+
+                    foreach (var grp in hsnGroups)
+                    {
+                        decimal totalQty = grp.Sum(x => x.Quantity);
+                        decimal totalVal = grp.Sum(x => x.TotalAmount);
+                        decimal totalTax = grp.Sum(x => x.CGSTAmount + x.SGSTAmount + x.IGSTAmount);
+                        decimal taxable = grp.Sum(x => x.TaxableValue > 0 ? x.TaxableValue : (x.TotalAmount - totalTax));
+                        decimal firstRate = grp.FirstOrDefault()?.GSTRate ?? 0;
+                        string desc = grp.FirstOrDefault()?.ProductName ?? "General Goods";
+
+                        DecryptedGstHsnSummaries.Add(new GstHsnSummaryItem
+                        {
+                            HSNCode = grp.Key,
+                            Description = desc,
+                            TotalQuantity = totalQty,
+                            TotalValue = totalVal,
+                            TaxableValue = taxable,
+                            GstRate = firstRate,
+                            CentralTaxAmount = Math.Round(totalTax / 2, 2),
+                            StateTaxAmount = Math.Round(totalTax / 2, 2),
+                            IntegratedTaxAmount = 0
+                        });
+                    }
+
+                    // Compute Rate Breakdowns
+                    var rateGroups = invoices.SelectMany(i => i.Items ?? new List<InvoiceItem>())
+                        .GroupBy(item => item.GSTRate);
+
+                    foreach (var grp in rateGroups.OrderBy(g => g.Key))
+                    {
+                        decimal taxable = grp.Sum(x => x.TaxableValue > 0 ? x.TaxableValue : (x.TotalAmount - (x.CGSTAmount + x.SGSTAmount + x.IGSTAmount)));
+                        decimal tax = grp.Sum(x => x.CGSTAmount + x.SGSTAmount + x.IGSTAmount);
+                        decimal halfTax = Math.Round(tax / 2, 2);
+
+                        DecryptedGstRateBreakdowns.Add(new GstRateBreakdownItem
+                        {
+                            RateLabel = $"GST @ {grp.Key:N0}% Slabs",
+                            GstRate = grp.Key,
+                            TaxableAmount = taxable,
+                            CGSTAmount = halfTax,
+                            SGSTAmount = halfTax,
+                            IGSTAmount = 0
+                        });
+                    }
+                }
+            }
+
+            // 3. Read Products
+            if (innerRoot.TryGetProperty("Products", out var productsProp))
+            {
+                var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                var products = JsonSerializer.Deserialize<List<Product>>(productsProp.GetRawText(), options);
+                if (products != null)
+                {
+                    foreach (var prod in products)
+                    {
+                        DecryptedAuditProducts.Add(prod);
+                    }
+                }
+            }
+
+            // 4. Read AuditLogs
+            if (innerRoot.TryGetProperty("AuditLogs", out var logsProp))
+            {
+                var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                var logs = JsonSerializer.Deserialize<List<AuditLog>>(logsProp.GetRawText(), options);
+                if (logs != null)
+                {
+                    foreach (var log in logs)
+                    {
+                        DecryptedAuditLogs.Add(log);
+                    }
+                }
+            }
+
+            IsAuditPackageDecrypted = true;
+            AuditActiveSubTab = "Invoices";
+            DecryptStatusMessage = $"✅ Successfully decrypted commercial package for '{AuditLegalName}' ({AuditBusinessCode})! Period: {AuditAccountingPeriod}";
+        }
+        catch (Exception ex)
+        {
+            IsAuditPackageDecrypted = false;
+            DecryptStatusMessage = $"❌ Decryption error: {ex.Message}";
+        }
+    }
+
+    [RelayCommand]
+    private void ExportDecryptedAuditCsv()
+    {
+        if (!IsAuditPackageDecrypted || DecryptedAuditInvoices.Count == 0)
+        {
+            DecryptStatusMessage = "No decrypted invoices available to export.";
+            return;
+        }
+
+        try
+        {
+            string exportDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Exports", "Decrypted");
+            Directory.CreateDirectory(exportDir);
+            string fileName = $"Decrypted_Invoices_{AuditBusinessCode}_{DateTime.UtcNow:yyyyMMdd_HHmmss}.csv";
+            string filePath = Path.Combine(exportDir, fileName);
+
+            var sb = new StringBuilder();
+            sb.AppendLine("InvoiceNumber,DateUTC,CustomerName,CustomerPhone,CustomerGSTIN,PaymentMethod,SubTotal,TotalDiscount,TotalTax,GrandTotal");
+
+            foreach (var inv in DecryptedAuditInvoices)
+            {
+                sb.AppendLine($"\"{inv.InvoiceNumber}\",\"{inv.InvoiceDateUtc:yyyy-MM-dd HH:mm}\",\"{inv.CustomerName}\",\"{inv.CustomerPhone}\",\"{inv.CustomerGSTIN}\",\"{inv.PaymentMethod}\",{inv.SubTotal:F2},{inv.TotalDiscount:F2},{inv.TotalTax:F2},{inv.GrandTotal:F2}");
+            }
+
+            File.WriteAllText(filePath, sb.ToString(), Encoding.UTF8);
+
+            DecryptStatusMessage = $"📁 Exported decrypted ledger CSV to: {fileName}";
+            try
+            {
+                Process.Start("explorer.exe", $"/select,\"{filePath}\"");
+            }
+            catch { }
+        }
+        catch (Exception ex)
+        {
+            DecryptStatusMessage = $"CSV Export failed: {ex.Message}";
+        }
+    }
+
+    [RelayCommand]
+    private void OpenAuditFolder()
+    {
+        try
+        {
+            string dir = Path.GetDirectoryName(SelectedAuditFilePath) ?? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Exports");
+            if (!Directory.Exists(dir)) Directory.CreateDirectory(dir);
+            Process.Start("explorer.exe", dir);
+        }
+        catch (Exception ex)
+        {
+            DecryptStatusMessage = $"Could not open folder: {ex.Message}";
+        }
+    }
+
+    [RelayCommand]
+    private void ClearDecryptedAudit()
+    {
+        DecryptedAuditInvoices.Clear();
+        DecryptedAuditProducts.Clear();
+        DecryptedAuditLogs.Clear();
+        DecryptedGstHsnSummaries.Clear();
+        DecryptedGstRateBreakdowns.Clear();
+        SelectedAuditFilePath = string.Empty;
+        IsAuditPackageDecrypted = false;
+        DecryptStatusMessage = string.Empty;
     }
 }

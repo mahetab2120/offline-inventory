@@ -791,6 +791,773 @@
                     </ScrollViewer>
                 </Border>
 
+                <!-- ================================================================= -->
+                <!-- TAB 4: LICENSE RENEWALS & EXTENSIONS (.lic)                       -->
+                <!-- ================================================================= -->
+                <Border>
+                    <Border.Style>
+                        <Style TargetType="Border" BasedOn="{StaticResource ModernCard}">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding CurrentTab}" Value="Renewals">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
+
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel>
+                            <!-- Header Bar -->
+                            <Grid Margin="0,0,0,20">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0">
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <TextBlock Text="🔄 Client Business License Extensions &amp; Renewals (.lic)" Foreground="{StaticResource TextPrimaryBrush}" FontSize="22" FontWeight="Bold"/>
+                                        <Border Background="#1E1B4B" CornerRadius="4" Padding="8,3" Margin="12,0,0,0" VerticalAlignment="Center">
+                                            <TextBlock Text="RSA-4096 SHA256 SIGNED" Foreground="#A5B4FC" FontSize="11" FontWeight="Bold"/>
+                                        </Border>
+                                    </StackPanel>
+                                    <TextBlock Text="Generate cryptographically signed offline renewal certificates (.lic) to extend client business subscriptions with zero internet required." Foreground="{StaticResource TextSecondaryBrush}" FontSize="13" Margin="0,4,0,0"/>
+                                </StackPanel>
+                                <Button Grid.Column="1" Content="📁 Open Licenses Folder" Style="{StaticResource PrimaryButton}" Background="{StaticResource SurfaceCardBrush}" Height="40" Padding="14,0" FontSize="13" Command="{Binding OpenLicenseFolderCommand}"/>
+                            </Grid>
+
+                            <!-- Renewal Status Notification -->
+                            <Border Background="{StaticResource PrimaryBlueBrush}" CornerRadius="8" Padding="14" Margin="0,0,0,20" Visibility="{Binding IsLicenseRenewalGenerated, Converter={StaticResource BoolToVis}}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="✅ " FontSize="16" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{Binding RenewalStatusMessage}" Foreground="White" FontSize="13" FontWeight="Bold" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Top Section: 2 Columns (Configuration + Issued Manifest) -->
+                            <Grid Margin="0,0,0,24">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="1.1*"/>
+                                    <ColumnDefinition Width="20"/>
+                                    <ColumnDefinition Width="0.9*"/>
+                                </Grid.ColumnDefinitions>
+
+                                <!-- Left Column: Client Selection & Extension Config -->
+                                <Border Grid.Column="0" Background="#111827" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="10" Padding="20">
+                                    <StackPanel>
+                                        <TextBlock Text="1. SELECT CLIENT BUSINESS TO RENEW" Foreground="{StaticResource AccentCyanBrush}" FontSize="13" FontWeight="Bold" Margin="0,0,0,12"/>
+
+                                        <!-- Client Dropdown Selector -->
+                                        <TextBlock Text="Registered Client Establishment *" Foreground="{StaticResource TextSecondaryBrush}" FontSize="12" Margin="0,0,0,4"/>
+                                        <ComboBox ItemsSource="{Binding AllClients}" 
+                                                  SelectedItem="{Binding SelectedRenewalClient}" 
+                                                  Style="{StaticResource ModernComboBox}" 
+                                                  Height="44" 
+                                                  Margin="0,0,0,16">
+                                            <ComboBox.ItemTemplate>
+                                                <DataTemplate>
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <TextBlock Text="{Binding TradeName}" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}"/>
+                                                        <TextBlock Text=" — " Foreground="{StaticResource TextSecondaryBrush}"/>
+                                                        <TextBlock Text="{Binding BusinessCode}" Foreground="{StaticResource AccentCyanBrush}"/>
+                                                        <TextBlock Text=" (" Foreground="{StaticResource TextSecondaryBrush}"/>
+                                                        <TextBlock Text="{Binding Status}" Foreground="{Binding StatusColor}" FontWeight="SemiBold"/>
+                                                        <TextBlock Text=", " Foreground="{StaticResource TextSecondaryBrush}"/>
+                                                        <TextBlock Text="{Binding DaysRemaining, StringFormat='{}{0}d left'}" Foreground="{StaticResource TextSecondaryBrush}"/>
+                                                        <TextBlock Text=")" Foreground="{StaticResource TextSecondaryBrush}"/>
+                                                    </StackPanel>
+                                                </DataTemplate>
+                                            </ComboBox.ItemTemplate>
+                                        </ComboBox>
+
+                                        <!-- Selected Client Detail Card -->
+                                        <Border Background="#1E293B" CornerRadius="8" Padding="14" Margin="0,0,0,16" BorderBrush="#334155" BorderThickness="1">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel Grid.Column="0">
+                                                    <TextBlock Text="LEGAL ENTITY &amp; GSTIN" Foreground="{StaticResource TextSecondaryBrush}" FontSize="10" FontWeight="Bold"/>
+                                                    <TextBlock Text="{Binding SelectedRenewalClient.LegalName}" Foreground="{StaticResource TextPrimaryBrush}" FontSize="13" FontWeight="SemiBold" Margin="0,2,0,0"/>
+                                                    <TextBlock Text="{Binding SelectedRenewalClient.GSTIN, StringFormat='GSTIN: {0}'}" Foreground="#94A3B8" FontSize="11" Margin="0,2,0,0"/>
+                                                    <TextBlock Text="{Binding SelectedRenewalClient.ContactEmail, StringFormat='✉️ {0}'}" Foreground="#94A3B8" FontSize="11" Margin="0,2,0,0"/>
+                                                </StackPanel>
+                                                <StackPanel Grid.Column="1" HorizontalAlignment="Right">
+                                                    <TextBlock Text="CURRENT STATUS" Foreground="{StaticResource TextSecondaryBrush}" FontSize="10" FontWeight="Bold" HorizontalAlignment="Right"/>
+                                                    <Border Background="{Binding SelectedRenewalClient.StatusColor}" CornerRadius="4" Padding="8,3" HorizontalAlignment="Right" Margin="0,4,0,0">
+                                                        <TextBlock Text="{Binding SelectedRenewalClient.Status}" Foreground="White" FontSize="10" FontWeight="Bold"/>
+                                                    </Border>
+                                                    <TextBlock Text="{Binding SelectedRenewalClient.ExpiryDateUtc, StringFormat='Expires: {0:dd-MMM-yyyy}'}" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" HorizontalAlignment="Right" Margin="0,4,0,0"/>
+                                                    <TextBlock Text="{Binding SelectedRenewalClient.DaysRemaining, StringFormat='{}{0} Days Remaining'}" Foreground="{StaticResource AccentCyanBrush}" FontSize="11" FontWeight="Bold" HorizontalAlignment="Right" Margin="0,2,0,0"/>
+                                                </StackPanel>
+                                            </Grid>
+                                        </Border>
+
+                                        <TextBlock Text="2. CONFIGURE SUBSCRIPTION EXTENSION" Foreground="{StaticResource AccentCyanBrush}" FontSize="13" FontWeight="Bold" Margin="0,0,0,12"/>
+
+                                        <Grid Margin="0,0,0,16">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="12"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0">
+                                                <TextBlock Text="Subscription Plan Tier" Foreground="{StaticResource TextSecondaryBrush}" FontSize="12" Margin="0,0,0,4"/>
+                                                <ComboBox ItemsSource="{Binding SubscriptionTiers}" SelectedItem="{Binding RenewalSelectedPlan}" Style="{StaticResource ModernComboBox}" Height="44"/>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="2">
+                                                <TextBlock Text="Validity Extension Duration" Foreground="{StaticResource TextSecondaryBrush}" FontSize="12" Margin="0,0,0,4"/>
+                                                <ComboBox ItemsSource="{Binding ValidityOptions}" SelectedItem="{Binding RenewalSelectedValidity}" DisplayMemberPath="DisplayText" Style="{StaticResource ModernComboBox}" Height="44"/>
+                                            </StackPanel>
+                                        </Grid>
+
+                                        <!-- Calculated New Expiry Badge -->
+                                        <Border Background="#064E3B" CornerRadius="8" Padding="16" Margin="0,0,0,18" BorderBrush="{StaticResource SuccessGreenBrush}" BorderThickness="1">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel Grid.Column="0">
+                                                    <TextBlock Text="CALCULATED NEW EXPIRATION DATE" Foreground="#A7F3D0" FontSize="11" FontWeight="Bold"/>
+                                                    <TextBlock Text="{Binding RenewalCalculatedExpiryDate, StringFormat='{}{0:dddd, dd MMMM yyyy}'}" Foreground="White" FontSize="16" FontWeight="Bold" Margin="0,4,0,0"/>
+                                                </StackPanel>
+                                                <Border Grid.Column="1" Background="#047857" CornerRadius="4" Padding="10,6" VerticalAlignment="Center">
+                                                    <TextBlock Text="RSA-4096 SIGNED" Foreground="White" FontSize="11" FontWeight="Bold"/>
+                                                </Border>
+                                            </Grid>
+                                        </Border>
+
+                                        <!-- Action Button -->
+                                        <Button Content="🔄 Generate &amp; Sign License Certificate (.lic)" 
+                                                Style="{StaticResource SuccessButton}" 
+                                                Height="48" 
+                                                FontSize="14" 
+                                                FontWeight="Bold" 
+                                                Command="{Binding GenerateLicenseRenewalPackageCommand}"/>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- Right Column: Issued Certificate Manifest & Handoff -->
+                                <Border Grid.Column="2" Background="#111827" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="10" Padding="20">
+                                    <StackPanel>
+                                        <TextBlock Text="CERTIFICATE TECHNICAL MANIFEST (.lic)" Foreground="{StaticResource AccentCyanBrush}" FontSize="13" FontWeight="Bold" Margin="0,0,0,12"/>
+
+                                        <Border Background="#1E293B" CornerRadius="8" Padding="12" Margin="0,0,0,12" BorderBrush="#334155" BorderThickness="1">
+                                            <StackPanel>
+                                                <TextBlock Text="Active Certificate File:" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11"/>
+                                                <TextBlock Text="{Binding LastExportedLicenseFileName, TargetNullValue='No license generated yet.'}" Foreground="{StaticResource SuccessGreenBrush}" FontSize="13" FontWeight="Bold" Margin="0,2,0,0"/>
+                                                <TextBlock Text="{Binding LastExportedLicensePath, TargetNullValue=''}" Foreground="#64748B" FontSize="10" Margin="0,2,0,0" TextWrapping="Wrap"/>
+                                            </StackPanel>
+                                        </Border>
+
+                                        <!-- Action buttons for Manifest -->
+                                        <WrapPanel Margin="0,0,0,12">
+                                            <Button Content="📋 Copy License Summary" Style="{StaticResource PrimaryButton}" Background="{StaticResource SurfaceCardBrush}" Foreground="{StaticResource AccentCyanBrush}" Height="36" FontSize="12" Padding="12,0" Command="{Binding CopyLicenseSummaryCommand}" Margin="0,0,8,6"/>
+                                            <Button Content="📁 Reveal in Explorer" Style="{StaticResource PrimaryButton}" Height="36" FontSize="12" Padding="12,0" Command="{Binding OpenLicenseFolderCommand}" Margin="0,0,0,6"/>
+                                        </WrapPanel>
+
+                                        <!-- Certificate Content Preview -->
+                                        <Border Background="#0B0F17" CornerRadius="6" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" Padding="12" Margin="0,0,0,14">
+                                            <TextBox Text="{Binding RenewalSummaryText, TargetNullValue='Select a client business and click Generate &amp; Sign License Certificate to produce a cryptographic license.'}" 
+                                                     IsReadOnly="True" 
+                                                     Background="Transparent" 
+                                                     Foreground="#E2E8F0" 
+                                                     BorderThickness="0" 
+                                                     FontFamily="Consolas" 
+                                                     FontSize="11" 
+                                                     AcceptsReturn="True" 
+                                                     TextWrapping="Wrap" 
+                                                     Height="180" 
+                                                     VerticalScrollBarVisibility="Auto"/>
+                                        </Border>
+
+                                        <!-- Offline Handoff Info Box -->
+                                        <Border Background="#0F172A" CornerRadius="6" Padding="12" BorderBrush="#334155" BorderThickness="1">
+                                            <StackPanel>
+                                                <TextBlock Text="ℹ️ CLIENT OFFLINE ACTIVATION GUIDE" Foreground="{StaticResource AccentCyanBrush}" FontSize="11" FontWeight="Bold" Margin="0,0,0,4"/>
+                                                <TextBlock Text="1. Transfer the generated .lic file to the client via USB, local LAN, or email.&#x0a;2. In the AFS Desktop Business App, click 'Renew License Certificate'.&#x0a;3. Select this .lic file for instant validation without internet." Foreground="#94A3B8" FontSize="11" LineHeight="16" TextWrapping="Wrap"/>
+                                            </StackPanel>
+                                        </Border>
+                                    </StackPanel>
+                                </Border>
+                            </Grid>
+
+                            <!-- Bottom Section: Quick Renewal Directory Table -->
+                            <Border Background="#111827" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="10" Padding="20">
+                                <StackPanel>
+                                    <Grid Margin="0,0,0,14">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="300"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0">
+                                            <TextBlock Text="⚡ Quick Client Renewal Directory" Foreground="{StaticResource TextPrimaryBrush}" FontSize="16" FontWeight="Bold"/>
+                                            <TextBlock Text="Direct one-click renewal selection for all registered offline client businesses" Foreground="{StaticResource TextSecondaryBrush}" FontSize="12" Margin="0,2,0,0"/>
+                                        </StackPanel>
+                                        <TextBox Grid.Column="1" Text="{Binding SearchQuery, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ModernTextBox}" Height="38" FontSize="13" Padding="10,4"/>
+                                    </Grid>
+
+                                    <!-- Table Header -->
+                                    <Border Background="#1E293B" CornerRadius="6" Padding="14,10" Margin="0,0,0,8">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="130"/>
+                                                <ColumnDefinition Width="220"/>
+                                                <ColumnDefinition Width="130"/>
+                                                <ColumnDefinition Width="120"/>
+                                                <ColumnDefinition Width="120"/>
+                                                <ColumnDefinition Width="110"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Text="BUSINESS CODE" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" FontWeight="Bold"/>
+                                            <TextBlock Grid.Column="1" Text="TRADE &amp; LEGAL NAME" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" FontWeight="Bold"/>
+                                            <TextBlock Grid.Column="2" Text="CURRENT PLAN" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" FontWeight="Bold"/>
+                                            <TextBlock Grid.Column="3" Text="EXPIRY DATE" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" FontWeight="Bold"/>
+                                            <TextBlock Grid.Column="4" Text="DAYS LEFT" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" FontWeight="Bold"/>
+                                            <TextBlock Grid.Column="5" Text="STATUS" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" FontWeight="Bold"/>
+                                            <TextBlock Grid.Column="6" Text="ACTION" Foreground="{StaticResource AccentCyanBrush}" FontSize="11" FontWeight="Bold" HorizontalAlignment="Right"/>
+                                        </Grid>
+                                    </Border>
+
+                                    <!-- Table Rows -->
+                                    <ItemsControl ItemsSource="{Binding FilteredClients}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Border Background="#1E293B" CornerRadius="6" Padding="14,10" Margin="0,0,0,6" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+                                                    <Grid>
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="130"/>
+                                                            <ColumnDefinition Width="220"/>
+                                                            <ColumnDefinition Width="130"/>
+                                                            <ColumnDefinition Width="120"/>
+                                                            <ColumnDefinition Width="120"/>
+                                                            <ColumnDefinition Width="110"/>
+                                                            <ColumnDefinition Width="*"/>
+                                                        </Grid.ColumnDefinitions>
+
+                                                        <TextBlock Grid.Column="0" Text="{Binding BusinessCode}" Foreground="{StaticResource AccentCyanBrush}" FontSize="12" FontWeight="Bold" VerticalAlignment="Center"/>
+                                                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                            <TextBlock Text="{Binding TradeName}" Foreground="{StaticResource TextPrimaryBrush}" FontSize="13" FontWeight="SemiBold"/>
+                                                            <TextBlock Text="{Binding LegalName}" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11"/>
+                                                        </StackPanel>
+
+                                                        <Border Grid.Column="2" Background="#1E1B4B" CornerRadius="4" Padding="6,3" HorizontalAlignment="Left" VerticalAlignment="Center">
+                                                            <TextBlock Text="{Binding PlanBadge}" Foreground="#A5B4FC" FontSize="11" FontWeight="Bold"/>
+                                                        </Border>
+
+                                                        <TextBlock Grid.Column="3" Text="{Binding ExpiryDateUtc, StringFormat='{}{0:dd-MMM-yyyy}'}" Foreground="{StaticResource TextPrimaryBrush}" FontSize="12" VerticalAlignment="Center"/>
+
+                                                        <TextBlock Grid.Column="4" Text="{Binding DaysRemaining, StringFormat='{}{0} Days'}" Foreground="{StaticResource TextPrimaryBrush}" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
+
+                                                        <Border Grid.Column="5" Background="{Binding StatusColor}" CornerRadius="4" Padding="6,3" HorizontalAlignment="Left" VerticalAlignment="Center">
+                                                            <TextBlock Text="{Binding Status}" Foreground="White" FontSize="10" FontWeight="Bold"/>
+                                                        </Border>
+
+                                                        <Button Grid.Column="6" 
+                                                                Content="⚡ Select &amp; Renew" 
+                                                                Style="{StaticResource SuccessButton}" 
+                                                                Padding="12,4" 
+                                                                FontSize="11" 
+                                                                HorizontalAlignment="Right" 
+                                                                VerticalAlignment="Center"
+                                                                Command="{Binding DataContext.SelectClientForRenewalCommand, RelativeSource={RelativeSource AncestorType=Window}}" 
+                                                                CommandParameter="{Binding}"/>
+                                                    </Grid>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </Border>
+
+                        </StackPanel>
+                    </ScrollViewer>
+                </Border>
+
+                <!-- ================================================================= -->
+                <!-- TAB 5: DECRYPT CLIENT COMMERCIAL AUDIT (.afspkg / .enc)           -->
+                <!-- ================================================================= -->
+                <Border>
+                    <Border.Style>
+                        <Style TargetType="Border" BasedOn="{StaticResource ModernCard}">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding CurrentTab}" Value="DecryptAudit">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
+
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel>
+                            <!-- Header Bar -->
+                            <Grid Margin="0,0,0,20">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0">
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <TextBlock Text="🔓 Decrypt Client Commercial Audit Packages (.afspkg / .enc)" Foreground="{StaticResource TextPrimaryBrush}" FontSize="22" FontWeight="Bold"/>
+                                        <Border Background="#064E3B" CornerRadius="4" Padding="8,3" Margin="12,0,0,0" VerticalAlignment="Center">
+                                            <TextBlock Text="AES-256-GCM AUTHENTICATED" Foreground="#6EE7B7" FontSize="11" FontWeight="Bold"/>
+                                        </Border>
+                                    </StackPanel>
+                                    <TextBlock Text="Cryptographically verify and decrypt client store commercial records, GST invoices ledger, HSN breakdowns, and audit trails." Foreground="{StaticResource TextSecondaryBrush}" FontSize="13" Margin="0,4,0,0"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                    <Button Content="📥 Export CSV" Style="{StaticResource PrimaryButton}" Background="{StaticResource SurfaceCardBrush}" Height="40" Padding="14,0" FontSize="13" Command="{Binding ExportDecryptedAuditCsvCommand}" Margin="0,0,8,0" Visibility="{Binding IsAuditPackageDecrypted, Converter={StaticResource BoolToVis}}"/>
+                                    <Button Content="📁 Open Folder" Style="{StaticResource PrimaryButton}" Background="{StaticResource SurfaceCardBrush}" Height="40" Padding="14,0" FontSize="13" Command="{Binding OpenAuditFolderCommand}"/>
+                                </StackPanel>
+                            </Grid>
+
+                            <!-- Package Selection & Decrypt Trigger Card -->
+                            <Border Background="#111827" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="10" Padding="20" Margin="0,0,0,20">
+                                <StackPanel>
+                                    <TextBlock Text="SELECT ENCRYPTED AUDIT PACKAGE FILE" Foreground="{StaticResource AccentCyanBrush}" FontSize="13" FontWeight="Bold" Margin="0,0,0,8"/>
+
+                                    <Grid Margin="0,0,0,12">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="10"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="10"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="10"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+
+                                        <TextBox Grid.Column="0" 
+                                                 Text="{Binding SelectedAuditFilePath, UpdateSourceTrigger=PropertyChanged}" 
+                                                 Style="{StaticResource ModernTextBox}" 
+                                                 Height="44" 
+                                                 FontSize="13" 
+                                                 Padding="12,4"/>
+
+                                        <Button Grid.Column="2" 
+                                                Content="📂 Browse Package..." 
+                                                Style="{StaticResource PrimaryButton}" 
+                                                Height="44" 
+                                                Padding="16,0" 
+                                                FontSize="13" 
+                                                Command="{Binding BrowseAuditPackageFileCommand}"/>
+
+                                        <Button Grid.Column="4" 
+                                                Content="🔓 Decrypt &amp; Inspect Package" 
+                                                Style="{StaticResource SuccessButton}" 
+                                                Height="44" 
+                                                Padding="20,0" 
+                                                FontSize="14" 
+                                                FontWeight="Bold" 
+                                                Command="{Binding ExecuteDecryptAuditPackageCommand}"/>
+
+                                        <Button Grid.Column="6" 
+                                                Content="🧹 Clear" 
+                                                Style="{StaticResource PrimaryButton}" 
+                                                Background="#334155" 
+                                                Height="44" 
+                                                Padding="14,0" 
+                                                FontSize="13" 
+                                                Command="{Binding ClearDecryptedAuditCommand}"/>
+                                    </Grid>
+
+                                    <!-- Status notification banner -->
+                                    <Border Background="#1E293B" CornerRadius="6" Padding="12" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+                                        <TextBlock Text="{Binding DecryptStatusMessage, TargetNullValue='Please select an exported .afspkg or .enc package file from the client store and click Decrypt.'}" 
+                                                   Foreground="{StaticResource AccentCyanBrush}" 
+                                                   FontSize="12" 
+                                                   FontWeight="SemiBold" 
+                                                   TextWrapping="Wrap"/>
+                                    </Border>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Decrypted Commercial Overview (Visible when IsAuditPackageDecrypted is True) -->
+                            <StackPanel Visibility="{Binding IsAuditPackageDecrypted, Converter={StaticResource BoolToVis}}">
+                                <!-- KPI Cards (4 metrics) -->
+                                <UniformGrid Columns="4" Margin="0,0,0,20">
+                                    <Border Style="{StaticResource ModernCard}" Margin="0,0,6,0">
+                                        <StackPanel>
+                                            <TextBlock Text="CLIENT BUSINESS ENTITY" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" FontWeight="Bold"/>
+                                            <TextBlock Text="{Binding AuditLegalName}" Foreground="{StaticResource TextPrimaryBrush}" FontSize="16" FontWeight="Bold" Margin="0,4,0,0" TextTrimming="CharacterEllipsis"/>
+                                            <TextBlock Text="{Binding AuditGstin, StringFormat='GSTIN: {0}'}" Foreground="{StaticResource AccentCyanBrush}" FontSize="12" Margin="0,2,0,0"/>
+                                            <TextBlock Text="{Binding AuditBusinessCode, StringFormat='Code: {0}'}" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" Margin="0,1,0,0"/>
+                                        </StackPanel>
+                                    </Border>
+
+                                    <Border Style="{StaticResource ModernCard}" Margin="3,0,3,0">
+                                        <StackPanel>
+                                            <TextBlock Text="ACCOUNTING PERIOD" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" FontWeight="Bold"/>
+                                            <TextBlock Text="{Binding AuditAccountingPeriod}" Foreground="{StaticResource AccentCyanBrush}" FontSize="18" FontWeight="Bold" Margin="0,4,0,0"/>
+                                            <TextBlock Text="{Binding AuditExportTimestamp, StringFormat='Exported: {0:dd-MMM-yyyy HH:mm} UTC'}" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" Margin="0,2,0,0"/>
+                                            <TextBlock Text="{Binding AuditTotalInvoices, StringFormat='{}{0} Invoices Decrypted'}" Foreground="{StaticResource SuccessGreenBrush}" FontSize="11" FontWeight="Bold" Margin="0,1,0,0"/>
+                                        </StackPanel>
+                                    </Border>
+
+                                    <Border Style="{StaticResource ModernCard}" Margin="3,0,3,0">
+                                        <StackPanel>
+                                            <TextBlock Text="TAXABLE TURNOVER &amp; GST" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" FontWeight="Bold"/>
+                                            <TextBlock Text="{Binding AuditTaxableTurnover, StringFormat='₹{0:N2}'}" Foreground="{StaticResource TextPrimaryBrush}" FontSize="18" FontWeight="Bold" Margin="0,4,0,0"/>
+                                            <TextBlock Text="{Binding AuditTotalTax, StringFormat='Total Tax: ₹{0:N2}'}" Foreground="{StaticResource WarningAmberBrush}" FontSize="12" FontWeight="Bold" Margin="0,2,0,0"/>
+                                            <TextBlock Text="{Binding AuditTotalCgst, StringFormat='CGST ₹{0:N2} | SGST ₹{0:N2}'}" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" Margin="0,1,0,0"/>
+                                        </StackPanel>
+                                    </Border>
+
+                                    <Border Style="{StaticResource ModernCard}" Margin="6,0,0,0">
+                                        <StackPanel>
+                                            <TextBlock Text="GROSS REVENUE &amp; VALUATION" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" FontWeight="Bold"/>
+                                            <TextBlock Text="{Binding AuditTotalRevenue, StringFormat='₹{0:N2}'}" Foreground="{StaticResource SuccessGreenBrush}" FontSize="18" FontWeight="Bold" Margin="0,4,0,0"/>
+                                            <TextBlock Text="{Binding AuditInventoryValuation, StringFormat='Inventory: ₹{0:N2}'}" Foreground="{StaticResource TextSecondaryBrush}" FontSize="12" Margin="0,2,0,0"/>
+                                            <TextBlock Text="{Binding AuditLogsCount, StringFormat='Audit Trail: {0} Logs'}" Foreground="{StaticResource AccentCyanBrush}" FontSize="11" Margin="0,1,0,0"/>
+                                        </StackPanel>
+                                    </Border>
+                                </UniformGrid>
+
+                                <!-- Decrypted Sub-Tab Navigation Bar -->
+                                <Border Background="#111827" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="8" Padding="6" Margin="0,0,0,16">
+                                    <Grid>
+                                        <StackPanel Orientation="Horizontal">
+                                            <Button Content="📑 Invoices Ledger" Style="{StaticResource PrimaryButton}" Background="{StaticResource PrimaryBlueBrush}" Height="36" Padding="14,0" FontSize="12" Command="{Binding SwitchAuditSubTabCommand}" CommandParameter="Invoices" Margin="0,0,6,0"/>
+                                            <Button Content="📊 GST Tax &amp; HSN Summary" Style="{StaticResource PrimaryButton}" Background="{StaticResource SurfaceCardBrush}" Height="36" Padding="14,0" FontSize="12" Command="{Binding SwitchAuditSubTabCommand}" CommandParameter="TaxSummary" Margin="0,0,6,0"/>
+                                            <Button Content="📦 Inventory Catalog Valuation" Style="{StaticResource PrimaryButton}" Background="{StaticResource SurfaceCardBrush}" Height="36" Padding="14,0" FontSize="12" Command="{Binding SwitchAuditSubTabCommand}" CommandParameter="Inventory" Margin="0,0,6,0"/>
+                                            <Button Content="🛡️ Tamper-Proof Audit Trail" Style="{StaticResource PrimaryButton}" Background="{StaticResource SurfaceCardBrush}" Height="36" Padding="14,0" FontSize="12" Command="{Binding SwitchAuditSubTabCommand}" CommandParameter="AuditLogs"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+
+                                <!-- Sub-View 1: Invoices Ledger -->
+                                <Border Background="#111827" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="10" Padding="16" Margin="0,0,0,20">
+                                    <Border.Style>
+                                        <Style TargetType="Border">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding AuditActiveSubTab}" Value="Invoices">
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
+
+                                    <StackPanel>
+                                        <TextBlock Text="Decrypted Sales Invoices Ledger" Foreground="{StaticResource TextPrimaryBrush}" FontSize="16" FontWeight="Bold" Margin="0,0,0,12"/>
+
+                                        <!-- Table Header -->
+                                        <Border Background="#1E293B" CornerRadius="6" Padding="12,8" Margin="0,0,0,8">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="130"/>
+                                                    <ColumnDefinition Width="120"/>
+                                                    <ColumnDefinition Width="180"/>
+                                                    <ColumnDefinition Width="130"/>
+                                                    <ColumnDefinition Width="100"/>
+                                                    <ColumnDefinition Width="100"/>
+                                                    <ColumnDefinition Width="100"/>
+                                                    <ColumnDefinition Width="100"/>
+                                                    <ColumnDefinition Width="110"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Grid.Column="0" Text="INVOICE #" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" FontWeight="Bold"/>
+                                                <TextBlock Grid.Column="1" Text="DATE (UTC)" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" FontWeight="Bold"/>
+                                                <TextBlock Grid.Column="2" Text="CUSTOMER" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" FontWeight="Bold"/>
+                                                <TextBlock Grid.Column="3" Text="GSTIN" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" FontWeight="Bold"/>
+                                                <TextBlock Grid.Column="4" Text="MODE" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" FontWeight="Bold"/>
+                                                <TextBlock Grid.Column="5" Text="SUBTOTAL" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" FontWeight="Bold" HorizontalAlignment="Right"/>
+                                                <TextBlock Grid.Column="6" Text="DISCOUNT" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" FontWeight="Bold" HorizontalAlignment="Right"/>
+                                                <TextBlock Grid.Column="7" Text="TAX" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" FontWeight="Bold" HorizontalAlignment="Right"/>
+                                                <TextBlock Grid.Column="8" Text="GRAND TOTAL" Foreground="{StaticResource AccentCyanBrush}" FontSize="11" FontWeight="Bold" HorizontalAlignment="Right"/>
+                                            </Grid>
+                                        </Border>
+
+                                        <!-- Table Items -->
+                                        <ItemsControl ItemsSource="{Binding DecryptedAuditInvoices}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Border Background="#1E293B" CornerRadius="4" Padding="12,8" Margin="0,0,0,4" BorderBrush="#334155" BorderThickness="1">
+                                                        <Grid>
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="130"/>
+                                                                <ColumnDefinition Width="120"/>
+                                                                <ColumnDefinition Width="180"/>
+                                                                <ColumnDefinition Width="130"/>
+                                                                <ColumnDefinition Width="100"/>
+                                                                <ColumnDefinition Width="100"/>
+                                                                <ColumnDefinition Width="100"/>
+                                                                <ColumnDefinition Width="100"/>
+                                                                <ColumnDefinition Width="110"/>
+                                                            </Grid.ColumnDefinitions>
+                                                            <TextBlock Grid.Column="0" Text="{Binding InvoiceNumber}" Foreground="{StaticResource AccentCyanBrush}" FontSize="12" FontWeight="Bold" VerticalAlignment="Center"/>
+                                                            <TextBlock Grid.Column="1" Text="{Binding InvoiceDateUtc, StringFormat='{}{0:dd-MMM-yyyy}'}" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" VerticalAlignment="Center"/>
+                                                            <TextBlock Grid.Column="2" Text="{Binding CustomerName}" Foreground="{StaticResource TextPrimaryBrush}" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                                            <TextBlock Grid.Column="3" Text="{Binding CustomerGSTIN, TargetNullValue='UNREGISTERED'}" Foreground="#94A3B8" FontSize="11" VerticalAlignment="Center"/>
+                                                            <Border Grid.Column="4" Background="#0F172A" CornerRadius="3" Padding="6,2" HorizontalAlignment="Left" VerticalAlignment="Center">
+                                                                <TextBlock Text="{Binding PaymentMethod}" Foreground="#94A3B8" FontSize="10" FontWeight="Bold"/>
+                                                            </Border>
+                                                            <TextBlock Grid.Column="5" Text="{Binding SubTotal, StringFormat='₹{0:N2}'}" Foreground="{StaticResource TextPrimaryBrush}" FontSize="11" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                                            <TextBlock Grid.Column="6" Text="{Binding TotalDiscount, StringFormat='₹{0:N2}'}" Foreground="#94A3B8" FontSize="11" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                                            <TextBlock Grid.Column="7" Text="{Binding TotalTax, StringFormat='₹{0:N2}'}" Foreground="{StaticResource WarningAmberBrush}" FontSize="11" FontWeight="SemiBold" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                                            <TextBlock Grid.Column="8" Text="{Binding GrandTotal, StringFormat='₹{0:N2}'}" Foreground="{StaticResource SuccessGreenBrush}" FontSize="12" FontWeight="Bold" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                                        </Grid>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- Sub-View 2: GST Tax & HSN Summary -->
+                                <Border Background="#111827" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="10" Padding="16" Margin="0,0,0,20">
+                                    <Border.Style>
+                                        <Style TargetType="Border">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding AuditActiveSubTab}" Value="TaxSummary">
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
+
+                                    <StackPanel>
+                                        <TextBlock Text="GST Rate Slabs Tax Breakdown" Foreground="{StaticResource TextPrimaryBrush}" FontSize="16" FontWeight="Bold" Margin="0,0,0,12"/>
+
+                                        <!-- Rate Slabs Table -->
+                                        <Border Background="#1E293B" CornerRadius="6" Padding="12,8" Margin="0,0,0,8">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="160"/>
+                                                    <ColumnDefinition Width="140"/>
+                                                    <ColumnDefinition Width="140"/>
+                                                    <ColumnDefinition Width="140"/>
+                                                    <ColumnDefinition Width="140"/>
+                                                    <ColumnDefinition Width="140"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Grid.Column="0" Text="GST RATE SLAB" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" FontWeight="Bold"/>
+                                                <TextBlock Grid.Column="1" Text="TAXABLE AMOUNT" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" FontWeight="Bold" HorizontalAlignment="Right"/>
+                                                <TextBlock Grid.Column="2" Text="CGST AMOUNT" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" FontWeight="Bold" HorizontalAlignment="Right"/>
+                                                <TextBlock Grid.Column="3" Text="SGST AMOUNT" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" FontWeight="Bold" HorizontalAlignment="Right"/>
+                                                <TextBlock Grid.Column="4" Text="IGST AMOUNT" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" FontWeight="Bold" HorizontalAlignment="Right"/>
+                                                <TextBlock Grid.Column="5" Text="TOTAL GST TAX" Foreground="{StaticResource AccentCyanBrush}" FontSize="11" FontWeight="Bold" HorizontalAlignment="Right"/>
+                                            </Grid>
+                                        </Border>
+
+                                        <ItemsControl ItemsSource="{Binding DecryptedGstRateBreakdowns}" Margin="0,0,0,20">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Border Background="#1E293B" CornerRadius="4" Padding="12,8" Margin="0,0,0,4" BorderBrush="#334155" BorderThickness="1">
+                                                        <Grid>
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="160"/>
+                                                                <ColumnDefinition Width="140"/>
+                                                                <ColumnDefinition Width="140"/>
+                                                                <ColumnDefinition Width="140"/>
+                                                                <ColumnDefinition Width="140"/>
+                                                                <ColumnDefinition Width="140"/>
+                                                            </Grid.ColumnDefinitions>
+                                                            <TextBlock Grid.Column="0" Text="{Binding RateLabel}" Foreground="{StaticResource TextPrimaryBrush}" FontSize="12" FontWeight="Bold" VerticalAlignment="Center"/>
+                                                            <TextBlock Grid.Column="1" Text="{Binding TaxableAmount, StringFormat='₹{0:N2}'}" Foreground="{StaticResource TextPrimaryBrush}" FontSize="11" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                                            <TextBlock Grid.Column="2" Text="{Binding CGSTAmount, StringFormat='₹{0:N2}'}" Foreground="#94A3B8" FontSize="11" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                                            <TextBlock Grid.Column="3" Text="{Binding SGSTAmount, StringFormat='₹{0:N2}'}" Foreground="#94A3B8" FontSize="11" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                                            <TextBlock Grid.Column="4" Text="{Binding IGSTAmount, StringFormat='₹{0:N2}'}" Foreground="#94A3B8" FontSize="11" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                                            <TextBlock Grid.Column="5" Text="{Binding TotalTaxAmount, StringFormat='₹{0:N2}'}" Foreground="{StaticResource SuccessGreenBrush}" FontSize="12" FontWeight="Bold" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                                        </Grid>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+
+                                        <TextBlock Text="HSN-wise Summary of Inward &amp; Outward Goods" Foreground="{StaticResource TextPrimaryBrush}" FontSize="16" FontWeight="Bold" Margin="0,8,0,12"/>
+
+                                        <!-- HSN Table Header -->
+                                        <Border Background="#1E293B" CornerRadius="6" Padding="12,8" Margin="0,0,0,8">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="110"/>
+                                                    <ColumnDefinition Width="200"/>
+                                                    <ColumnDefinition Width="90"/>
+                                                    <ColumnDefinition Width="120"/>
+                                                    <ColumnDefinition Width="120"/>
+                                                    <ColumnDefinition Width="80"/>
+                                                    <ColumnDefinition Width="120"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Grid.Column="0" Text="HSN CODE" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" FontWeight="Bold"/>
+                                                <TextBlock Grid.Column="1" Text="DESCRIPTION" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" FontWeight="Bold"/>
+                                                <TextBlock Grid.Column="2" Text="QTY" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" FontWeight="Bold" HorizontalAlignment="Right"/>
+                                                <TextBlock Grid.Column="3" Text="TOTAL VALUE" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" FontWeight="Bold" HorizontalAlignment="Right"/>
+                                                <TextBlock Grid.Column="4" Text="TAXABLE VAL" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" FontWeight="Bold" HorizontalAlignment="Right"/>
+                                                <TextBlock Grid.Column="5" Text="RATE" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" FontWeight="Bold" HorizontalAlignment="Right"/>
+                                                <TextBlock Grid.Column="6" Text="TOTAL TAX" Foreground="{StaticResource AccentCyanBrush}" FontSize="11" FontWeight="Bold" HorizontalAlignment="Right"/>
+                                            </Grid>
+                                        </Border>
+
+                                        <ItemsControl ItemsSource="{Binding DecryptedGstHsnSummaries}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Border Background="#1E293B" CornerRadius="4" Padding="12,8" Margin="0,0,0,4" BorderBrush="#334155" BorderThickness="1">
+                                                        <Grid>
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="110"/>
+                                                                <ColumnDefinition Width="200"/>
+                                                                <ColumnDefinition Width="90"/>
+                                                                <ColumnDefinition Width="120"/>
+                                                                <ColumnDefinition Width="120"/>
+                                                                <ColumnDefinition Width="80"/>
+                                                                <ColumnDefinition Width="120"/>
+                                                            </Grid.ColumnDefinitions>
+                                                            <TextBlock Grid.Column="0" Text="{Binding HSNCode}" Foreground="{StaticResource AccentCyanBrush}" FontSize="12" FontWeight="Bold" VerticalAlignment="Center"/>
+                                                            <TextBlock Grid.Column="1" Text="{Binding Description}" Foreground="{StaticResource TextPrimaryBrush}" FontSize="12" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                                            <TextBlock Grid.Column="2" Text="{Binding TotalQuantity, StringFormat='{}{0:N0}'}" Foreground="{StaticResource TextPrimaryBrush}" FontSize="11" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                                            <TextBlock Grid.Column="3" Text="{Binding TotalValue, StringFormat='₹{0:N2}'}" Foreground="{StaticResource TextPrimaryBrush}" FontSize="11" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                                            <TextBlock Grid.Column="4" Text="{Binding TaxableValue, StringFormat='₹{0:N2}'}" Foreground="{StaticResource TextPrimaryBrush}" FontSize="11" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                                            <TextBlock Grid.Column="5" Text="{Binding GstRate, StringFormat='{}{0}%'}" Foreground="#94A3B8" FontSize="11" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                                            <TextBlock Grid.Column="6" Text="{Binding TotalTaxAmount, StringFormat='₹{0:N2}'}" Foreground="{StaticResource SuccessGreenBrush}" FontSize="12" FontWeight="Bold" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                                        </Grid>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- Sub-View 3: Inventory Catalog Valuation -->
+                                <Border Background="#111827" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="10" Padding="16" Margin="0,0,0,20">
+                                    <Border.Style>
+                                        <Style TargetType="Border">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding AuditActiveSubTab}" Value="Inventory">
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
+
+                                    <StackPanel>
+                                        <TextBlock Text="Decrypted Client Inventory &amp; Stock Valuation" Foreground="{StaticResource TextPrimaryBrush}" FontSize="16" FontWeight="Bold" Margin="0,0,0,12"/>
+
+                                        <Border Background="#1E293B" CornerRadius="6" Padding="12,8" Margin="0,0,0,8">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="110"/>
+                                                    <ColumnDefinition Width="200"/>
+                                                    <ColumnDefinition Width="100"/>
+                                                    <ColumnDefinition Width="110"/>
+                                                    <ColumnDefinition Width="80"/>
+                                                    <ColumnDefinition Width="90"/>
+                                                    <ColumnDefinition Width="100"/>
+                                                    <ColumnDefinition Width="100"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Grid.Column="0" Text="SKU" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" FontWeight="Bold"/>
+                                                <TextBlock Grid.Column="1" Text="PRODUCT NAME" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" FontWeight="Bold"/>
+                                                <TextBlock Grid.Column="2" Text="HSN CODE" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" FontWeight="Bold"/>
+                                                <TextBlock Grid.Column="3" Text="CATEGORY" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" FontWeight="Bold"/>
+                                                <TextBlock Grid.Column="4" Text="UNIT" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" FontWeight="Bold"/>
+                                                <TextBlock Grid.Column="5" Text="STOCK" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" FontWeight="Bold" HorizontalAlignment="Right"/>
+                                                <TextBlock Grid.Column="6" Text="COST PRICE" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" FontWeight="Bold" HorizontalAlignment="Right"/>
+                                                <TextBlock Grid.Column="7" Text="SELL PRICE" Foreground="{StaticResource AccentCyanBrush}" FontSize="11" FontWeight="Bold" HorizontalAlignment="Right"/>
+                                            </Grid>
+                                        </Border>
+
+                                        <ItemsControl ItemsSource="{Binding DecryptedAuditProducts}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Border Background="#1E293B" CornerRadius="4" Padding="12,8" Margin="0,0,0,4" BorderBrush="#334155" BorderThickness="1">
+                                                        <Grid>
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="110"/>
+                                                                <ColumnDefinition Width="200"/>
+                                                                <ColumnDefinition Width="100"/>
+                                                                <ColumnDefinition Width="110"/>
+                                                                <ColumnDefinition Width="80"/>
+                                                                <ColumnDefinition Width="90"/>
+                                                                <ColumnDefinition Width="100"/>
+                                                                <ColumnDefinition Width="100"/>
+                                                            </Grid.ColumnDefinitions>
+                                                            <TextBlock Grid.Column="0" Text="{Binding SKU}" Foreground="{StaticResource AccentCyanBrush}" FontSize="12" FontWeight="Bold" VerticalAlignment="Center"/>
+                                                            <TextBlock Grid.Column="1" Text="{Binding Name}" Foreground="{StaticResource TextPrimaryBrush}" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                                            <TextBlock Grid.Column="2" Text="{Binding HSNCode}" Foreground="#94A3B8" FontSize="11" VerticalAlignment="Center"/>
+                                                            <TextBlock Grid.Column="3" Text="{Binding CategoryName}" Foreground="#94A3B8" FontSize="11" VerticalAlignment="Center"/>
+                                                            <TextBlock Grid.Column="4" Text="{Binding Unit}" Foreground="#94A3B8" FontSize="11" VerticalAlignment="Center"/>
+                                                            <TextBlock Grid.Column="5" Text="{Binding CurrentStock, StringFormat='{}{0:N0}'}" Foreground="{StaticResource TextPrimaryBrush}" FontSize="11" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                                            <TextBlock Grid.Column="6" Text="{Binding PurchasePrice, StringFormat='₹{0:N2}'}" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                                            <TextBlock Grid.Column="7" Text="{Binding SellingPrice, StringFormat='₹{0:N2}'}" Foreground="{StaticResource SuccessGreenBrush}" FontSize="12" FontWeight="Bold" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                                        </Grid>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- Sub-View 4: Tamper-Proof Audit Trail -->
+                                <Border Background="#111827" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="10" Padding="16" Margin="0,0,0,20">
+                                    <Border.Style>
+                                        <Style TargetType="Border">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding AuditActiveSubTab}" Value="AuditLogs">
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
+
+                                    <StackPanel>
+                                        <TextBlock Text="Decrypted Immutable Audit Trail Records" Foreground="{StaticResource TextPrimaryBrush}" FontSize="16" FontWeight="Bold" Margin="0,0,0,12"/>
+
+                                        <Border Background="#1E293B" CornerRadius="6" Padding="12,8" Margin="0,0,0,8">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="130"/>
+                                                    <ColumnDefinition Width="110"/>
+                                                    <ColumnDefinition Width="110"/>
+                                                    <ColumnDefinition Width="110"/>
+                                                    <ColumnDefinition Width="140"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Grid.Column="0" Text="TIMESTAMP (UTC)" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" FontWeight="Bold"/>
+                                                <TextBlock Grid.Column="1" Text="USER" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" FontWeight="Bold"/>
+                                                <TextBlock Grid.Column="2" Text="MODULE" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" FontWeight="Bold"/>
+                                                <TextBlock Grid.Column="3" Text="ACTION" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" FontWeight="Bold"/>
+                                                <TextBlock Grid.Column="4" Text="RECORD ID" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" FontWeight="Bold"/>
+                                                <TextBlock Grid.Column="5" Text="DETAILS / REASON" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" FontWeight="Bold"/>
+                                            </Grid>
+                                        </Border>
+
+                                        <ItemsControl ItemsSource="{Binding DecryptedAuditLogs}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Border Background="#1E293B" CornerRadius="4" Padding="12,8" Margin="0,0,0,4" BorderBrush="#334155" BorderThickness="1">
+                                                        <Grid>
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="130"/>
+                                                                <ColumnDefinition Width="110"/>
+                                                                <ColumnDefinition Width="110"/>
+                                                                <ColumnDefinition Width="110"/>
+                                                                <ColumnDefinition Width="140"/>
+                                                                <ColumnDefinition Width="*"/>
+                                                            </Grid.ColumnDefinitions>
+                                                            <TextBlock Grid.Column="0" Text="{Binding TimestampUtc, StringFormat='{}{0:dd-MMM-yyyy HH:mm}'}" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" VerticalAlignment="Center"/>
+                                                            <TextBlock Grid.Column="1" Text="{Binding Username}" Foreground="{StaticResource AccentCyanBrush}" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                                            <TextBlock Grid.Column="2" Text="{Binding Module}" Foreground="#94A3B8" FontSize="11" VerticalAlignment="Center"/>
+                                                            <Border Grid.Column="3" Background="#0F172A" CornerRadius="3" Padding="6,2" HorizontalAlignment="Left" VerticalAlignment="Center">
+                                                                <TextBlock Text="{Binding Action}" Foreground="#E2E8F0" FontSize="10" FontWeight="Bold"/>
+                                                            </Border>
+                                                            <TextBlock Grid.Column="4" Text="{Binding RecordId}" Foreground="#94A3B8" FontSize="11" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                                            <TextBlock Grid.Column="5" Text="{Binding Reason, TargetNullValue='System Event'}" Foreground="{StaticResource TextPrimaryBrush}" FontSize="11" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                                        </Grid>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Border>
+
             </Grid>
         </Grid>
 
