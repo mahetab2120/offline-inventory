@@ -283,10 +283,27 @@ public partial class MainViewModel : ObservableObject
         ? "🟢 Discount Authorized (Business Admin)"
         : "🔒 Discount Locked (Business Admin Only)";
 
+    public bool CanAccessGstReports => CurrentUser?.Role == UserRole.SuperAdmin_CA ||
+                                       CurrentUser?.Role == UserRole.Auditor;
+
+    public bool CanAccessSuperAdminExport => CurrentUser?.Role == UserRole.SuperAdmin_CA ||
+                                             CurrentUser?.Role == UserRole.Auditor;
+
+    public bool IsSuperAdmin => CurrentUser?.Role == UserRole.SuperAdmin_CA ||
+                                CurrentUser?.Role == UserRole.Auditor;
+
+    public string SuperAdminBadgeText => IsSuperAdmin
+        ? "🔐 Super Admin / CA Auditor"
+        : "🏢 Business Admin";
+
     partial void OnCurrentUserChanged(User? value)
     {
         OnPropertyChanged(nameof(CanApplyDiscount));
         OnPropertyChanged(nameof(DiscountPermissionStatusText));
+        OnPropertyChanged(nameof(CanAccessGstReports));
+        OnPropertyChanged(nameof(CanAccessSuperAdminExport));
+        OnPropertyChanged(nameof(IsSuperAdmin));
+        OnPropertyChanged(nameof(SuperAdminBadgeText));
         RecalculateCartTotals();
     }
 
@@ -646,9 +663,38 @@ public partial class MainViewModel : ObservableObject
     public ObservableCollection<PharmacyBatchDisplayItem> AllPharmacyBatches { get; } = new();
     public ObservableCollection<PharmacyBatchDisplayItem> FilteredPharmacyBatches { get; } = new();
 
+    // Month & Year Collections for GST Reports & Super Admin Export
+    public ObservableCollection<string> AvailableExportMonths { get; } = new()
+    {
+        "🌟 Full Accounting Year (All 12 Months)",
+        "01 - January",
+        "02 - February",
+        "03 - March",
+        "04 - April",
+        "05 - May",
+        "06 - June",
+        "07 - July",
+        "08 - August",
+        "09 - September",
+        "10 - October",
+        "11 - November",
+        "12 - December"
+    };
+
+    public ObservableCollection<int> AvailableExportYears { get; } = new()
+    {
+        2024, 2025, 2026, 2027, 2028, 2029, 2030
+    };
+
     // --- GST Reports State ---
     [ObservableProperty]
     private string selectedGstReportType = "GSTR-1"; // GSTR-1, GSTR-2, GSTR-3B, SalesSummary, StockValuation
+
+    [ObservableProperty]
+    private int selectedGstReportYear = DateTime.UtcNow.Year;
+
+    [ObservableProperty]
+    private string selectedGstReportMonth = DateTime.UtcNow.ToString("MM - MMMM");
 
     [ObservableProperty]
     private DateTime reportStartDate = DateTime.UtcNow.AddDays(-30);
@@ -726,10 +772,40 @@ public partial class MainViewModel : ObservableObject
 
     // --- Super Admin / CA Encrypted Data Export State ---
     [ObservableProperty]
+    private int selectedExportYear = DateTime.UtcNow.Year;
+
+    [ObservableProperty]
+    private string selectedExportMonth = DateTime.UtcNow.ToString("MM - MMMM");
+
+    [ObservableProperty]
     private DateTime caExportStartDate = DateTime.UtcNow.AddMonths(-1);
 
     [ObservableProperty]
     private DateTime caExportEndDate = DateTime.UtcNow;
+
+    [ObservableProperty]
+    private string caExportPeriodDisplay = string.Empty;
+
+    [ObservableProperty]
+    private int caExportInvoiceCount = 0;
+
+    [ObservableProperty]
+    private decimal caExportPeriodTaxable = 0;
+
+    [ObservableProperty]
+    private decimal caExportPeriodCgst = 0;
+
+    [ObservableProperty]
+    private decimal caExportPeriodSgst = 0;
+
+    [ObservableProperty]
+    private decimal caExportPeriodIgst = 0;
+
+    [ObservableProperty]
+    private decimal caExportPeriodTotalTax = 0;
+
+    [ObservableProperty]
+    private decimal caExportPeriodRevenue = 0;
 
     [ObservableProperty]
     private string caExportStatusMessage = string.Empty;
@@ -983,6 +1059,11 @@ Modules Enabled:  {string.Join(", ", payload.EnabledModules)}";
 
         try
         {
+            if (LoginUsername.Trim().Equals("superadmin", StringComparison.OrdinalIgnoreCase))
+            {
+                await EnsureDefaultSuperAdminExistsAsync();
+            }
+
             var (success, error, user) = await _authService.LoginAsync(LoginUsername, LoginPassword);
             if (!success || user == null)
             {
@@ -999,6 +1080,36 @@ Modules Enabled:  {string.Join(", ", payload.EnabledModules)}";
         catch (Exception ex)
         {
             LoginErrorMessage = $"Login error: {ex.Message}";
+        }
+    }
+
+    private async Task EnsureDefaultSuperAdminExistsAsync()
+    {
+        try
+        {
+            var existingSuper = await _userRepo.GetByUsernameAsync("superadmin");
+            if (existingSuper == null)
+            {
+                var (hash, salt) = _hasher.HashPassword("SuperAdmin@2026!");
+                var superUser = new User
+                {
+                    Id = Guid.NewGuid(),
+                    Username = "superadmin",
+                    FullName = "Super Administrator / CA Auditor",
+                    PasswordHash = hash,
+                    Salt = salt,
+                    Role = UserRole.SuperAdmin_CA,
+                    Permissions = SystemPermissions.All,
+                    IsActive = true,
+                    CreatedAtUtc = DateTime.UtcNow
+                };
+
+                await _userRepo.CreateUserAsync(superUser);
+            }
+        }
+        catch
+        {
+            // Ignore if exists or during startup
         }
     }
 
@@ -1035,10 +1146,25 @@ Modules Enabled:  {string.Join(", ", payload.EnabledModules)}";
     {
         if (tabObj is string tabName)
         {
+            if (tabName == "Reports" && !CanAccessGstReports)
+            {
+                PosStatusMessage = "🔒 Access Denied: GST Reports are restricted exclusively to Super Admin / CA Auditor.";
+                return;
+            }
+            if (tabName == "CaExport" && !CanAccessSuperAdminExport)
+            {
+                PosStatusMessage = "🔒 Access Denied: Encrypted Data Export is restricted exclusively to Super Admin / CA Auditor.";
+                return;
+            }
+
             CurrentDashboardTab = tabName;
             if (tabName == "Reports")
             {
                 GenerateGstReport();
+            }
+            else if (tabName == "CaExport")
+            {
+                _ = UpdateCaExportPeriodPreviewAsync();
             }
         }
     }
@@ -1049,6 +1175,7 @@ Modules Enabled:  {string.Join(", ", payload.EnabledModules)}";
     {
         try
         {
+            await EnsureDefaultSuperAdminExistsAsync();
             CurrentCompany = await _companyRepo.GetCompanyAsync();
             CurrentLicense = await _licenseRepo.GetCurrentLicenseAsync();
 
@@ -2320,6 +2447,47 @@ Modules Enabled:  {string.Join(", ", payload.EnabledModules)}";
 
     // --- GST Reports Engine Actions ---
 
+    partial void OnSelectedGstReportYearChanged(int value)
+    {
+        GenerateGstReport();
+    }
+
+    partial void OnSelectedGstReportMonthChanged(string value)
+    {
+        GenerateGstReport();
+    }
+
+    partial void OnSelectedGstReportTypeChanged(string value)
+    {
+        GenerateGstReport();
+    }
+
+    private (DateTime StartUtc, DateTime EndUtc, string Label) GetGstReportDateRange()
+    {
+        int year = SelectedGstReportYear > 2000 ? SelectedGstReportYear : DateTime.UtcNow.Year;
+
+        if (string.IsNullOrWhiteSpace(SelectedGstReportMonth) || 
+            SelectedGstReportMonth.StartsWith("🌟") || 
+            SelectedGstReportMonth.Contains("Full", StringComparison.OrdinalIgnoreCase))
+        {
+            var start = new DateTime(year, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+            var end = new DateTime(year, 12, 31, 23, 59, 59, DateTimeKind.Utc);
+            return (start, end, $"Calendar Year {year} (01-Jan-{year} to 31-Dec-{year})");
+        }
+
+        int month = DateTime.UtcNow.Month;
+        if (SelectedGstReportMonth.Length >= 2 && int.TryParse(SelectedGstReportMonth.Substring(0, 2), out int parsedMonth) && parsedMonth >= 1 && parsedMonth <= 12)
+        {
+            month = parsedMonth;
+        }
+
+        int daysInMonth = DateTime.DaysInMonth(year, month);
+        var monthStart = new DateTime(year, month, 1, 0, 0, 0, DateTimeKind.Utc);
+        var monthEnd = new DateTime(year, month, daysInMonth, 23, 59, 59, DateTimeKind.Utc);
+        string monthName = new DateTime(year, month, 1).ToString("MMMM");
+        return (monthStart, monthEnd, $"{monthName} {year} (01-{monthName.Substring(0, 3)}-{year} to {daysInMonth}-{monthName.Substring(0, 3)}-{year})");
+    }
+
     [RelayCommand]
     private void GenerateGstReport()
     {
@@ -2332,36 +2500,79 @@ Modules Enabled:  {string.Join(", ", payload.EnabledModules)}";
         decimal igstTotal = 0;
         decimal grandSales = 0;
 
+        var (startUtc, endUtc, periodLabel) = GetGstReportDateRange();
+        ReportStartDate = startUtc;
+        ReportEndDate = endUtc;
+
         var itemsByHsn = new Dictionary<string, (decimal Qty, decimal Taxable, decimal GstRate, string Name)>();
         var taxByRate = new Dictionary<decimal, (decimal Taxable, decimal CGST, decimal SGST, decimal IGST)>();
 
-        // Sample items from catalog and recent invoices
-        foreach (var p in AvailableProducts)
+        var periodInvoices = RecentInvoices.Where(i => i.InvoiceDateUtc >= startUtc && i.InvoiceDateUtc <= endUtc && i.Status == InvoiceStatus.Finalized).ToList();
+
+        if (periodInvoices.Count > 0)
         {
-            decimal qty = Math.Max(5, p.CurrentStock / 2);
-            decimal lineTaxable = qty * (p.SellingPrice / (1 + (p.GSTRate / 100)));
-            decimal lineTax = (qty * p.SellingPrice) - lineTaxable;
-
-            taxableTotal += lineTaxable;
-            cgstTotal += lineTax / 2;
-            sgstTotal += lineTax / 2;
-            grandSales += qty * p.SellingPrice;
-
-            string hsn = string.IsNullOrWhiteSpace(p.HSNCode) ? "300490" : p.HSNCode;
-            if (!itemsByHsn.ContainsKey(hsn))
+            foreach (var inv in periodInvoices)
             {
-                itemsByHsn[hsn] = (0, 0, p.GSTRate, p.Name);
-            }
-            var curHsn = itemsByHsn[hsn];
-            itemsByHsn[hsn] = (curHsn.Qty + qty, curHsn.Taxable + lineTaxable, p.GSTRate, p.Name);
+                foreach (var item in inv.Items)
+                {
+                    decimal lineTaxable = item.TaxableValue;
+                    decimal lineTax = item.CGSTAmount + item.SGSTAmount + item.IGSTAmount;
+                    decimal qty = item.Quantity;
 
-            decimal rate = p.GSTRate;
-            if (!taxByRate.ContainsKey(rate))
-            {
-                taxByRate[rate] = (0, 0, 0, 0);
+                    taxableTotal += lineTaxable;
+                    cgstTotal += item.CGSTAmount;
+                    sgstTotal += item.SGSTAmount;
+                    igstTotal += item.IGSTAmount;
+                    grandSales += item.TotalAmount;
+
+                    string hsn = string.IsNullOrWhiteSpace(item.HSNCode) ? "300490" : item.HSNCode;
+                    if (!itemsByHsn.ContainsKey(hsn))
+                    {
+                        itemsByHsn[hsn] = (0, 0, item.GSTRate, item.ProductName);
+                    }
+                    var curHsn = itemsByHsn[hsn];
+                    itemsByHsn[hsn] = (curHsn.Qty + qty, curHsn.Taxable + lineTaxable, item.GSTRate, item.ProductName);
+
+                    decimal rate = item.GSTRate;
+                    if (!taxByRate.ContainsKey(rate))
+                    {
+                        taxByRate[rate] = (0, 0, 0, 0);
+                    }
+                    var curRate = taxByRate[rate];
+                    taxByRate[rate] = (curRate.Taxable + lineTaxable, curRate.CGST + item.CGSTAmount, curRate.SGST + item.SGSTAmount, curRate.IGST + item.IGSTAmount);
+                }
             }
-            var curRate = taxByRate[rate];
-            taxByRate[rate] = (curRate.Taxable + lineTaxable, curRate.CGST + lineTax / 2, curRate.SGST + lineTax / 2, curRate.IGST);
+        }
+        else
+        {
+            // Sample items from catalog for visual representation
+            foreach (var p in AvailableProducts)
+            {
+                decimal qty = Math.Max(5, p.CurrentStock / 2);
+                decimal lineTaxable = qty * (p.SellingPrice / (1 + (p.GSTRate / 100)));
+                decimal lineTax = (qty * p.SellingPrice) - lineTaxable;
+
+                taxableTotal += lineTaxable;
+                cgstTotal += lineTax / 2;
+                sgstTotal += lineTax / 2;
+                grandSales += qty * p.SellingPrice;
+
+                string hsn = string.IsNullOrWhiteSpace(p.HSNCode) ? "300490" : p.HSNCode;
+                if (!itemsByHsn.ContainsKey(hsn))
+                {
+                    itemsByHsn[hsn] = (0, 0, p.GSTRate, p.Name);
+                }
+                var curHsn = itemsByHsn[hsn];
+                itemsByHsn[hsn] = (curHsn.Qty + qty, curHsn.Taxable + lineTaxable, p.GSTRate, p.Name);
+
+                decimal rate = p.GSTRate;
+                if (!taxByRate.ContainsKey(rate))
+                {
+                    taxByRate[rate] = (0, 0, 0, 0);
+                }
+                var curRate = taxByRate[rate];
+                taxByRate[rate] = (curRate.Taxable + lineTaxable, curRate.CGST + lineTax / 2, curRate.SGST + lineTax / 2, curRate.IGST);
+            }
         }
 
         foreach (var kvp in itemsByHsn)
@@ -2402,7 +2613,7 @@ Modules Enabled:  {string.Join(", ", payload.EnabledModules)}";
         ReportTotalTax = Math.Round(cgstTotal + sgstTotal + igstTotal, 2);
         ReportGrandTotalSales = Math.Round(grandSales, 2);
 
-        ReportStatusMessage = $"✅ {SelectedGstReportType} generated for period {ReportStartDate:dd-MMM-yyyy} to {ReportEndDate:dd-MMM-yyyy}.";
+        ReportStatusMessage = $"✅ {SelectedGstReportType} generated for period {periodLabel}.";
     }
 
     [RelayCommand]
@@ -2410,6 +2621,7 @@ Modules Enabled:  {string.Join(", ", payload.EnabledModules)}";
     {
         try
         {
+            var (_, _, periodLabel) = GetGstReportDateRange();
             string exportDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Exports");
             Directory.CreateDirectory(exportDir);
             string fileName = $"GST_Return_{SelectedGstReportType}_{DateTime.UtcNow:yyyyMMdd_HHmm}.csv";
@@ -2418,6 +2630,7 @@ Modules Enabled:  {string.Join(", ", payload.EnabledModules)}";
             var sb = new StringBuilder();
             sb.AppendLine("=== AFS GST STATUTORY RETURN REPORT ===");
             sb.AppendLine($"Report Type,{SelectedGstReportType}");
+            sb.AppendLine($"Accounting Period,{periodLabel}");
             sb.AppendLine($"Business Entity,{CurrentCompany?.LegalName} ({CurrentCompany?.TradeName})");
             sb.AppendLine($"GSTIN,{CurrentCompany?.GSTIN}");
             sb.AppendLine($"Generated On,{DateTime.UtcNow:dd-MMM-yyyy HH:mm:ss} UTC");
@@ -2520,12 +2733,109 @@ Modules Enabled:  {string.Join(", ", payload.EnabledModules)}";
 
     // --- Super Admin / CA Encrypted Data Export Actions ---
 
+    partial void OnSelectedExportYearChanged(int value)
+    {
+        _ = UpdateCaExportPeriodPreviewAsync();
+    }
+
+    partial void OnSelectedExportMonthChanged(string value)
+    {
+        _ = UpdateCaExportPeriodPreviewAsync();
+    }
+
+    private (DateTime StartUtc, DateTime EndUtc, string Label, string FileTag) GetExportDateRange()
+    {
+        int year = SelectedExportYear > 2000 ? SelectedExportYear : DateTime.UtcNow.Year;
+
+        if (string.IsNullOrWhiteSpace(SelectedExportMonth) || 
+            SelectedExportMonth.StartsWith("🌟") || 
+            SelectedExportMonth.Contains("Full", StringComparison.OrdinalIgnoreCase))
+        {
+            var start = new DateTime(year, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+            var end = new DateTime(year, 12, 31, 23, 59, 59, DateTimeKind.Utc);
+            return (start, end, $"Calendar Year {year} (01-Jan-{year} to 31-Dec-{year})", $"{year}_FullYear");
+        }
+
+        int month = DateTime.UtcNow.Month;
+        if (SelectedExportMonth.Length >= 2 && int.TryParse(SelectedExportMonth.Substring(0, 2), out int parsedMonth) && parsedMonth >= 1 && parsedMonth <= 12)
+        {
+            month = parsedMonth;
+        }
+
+        int daysInMonth = DateTime.DaysInMonth(year, month);
+        var monthStart = new DateTime(year, month, 1, 0, 0, 0, DateTimeKind.Utc);
+        var monthEnd = new DateTime(year, month, daysInMonth, 23, 59, 59, DateTimeKind.Utc);
+        string monthName = new DateTime(year, month, 1).ToString("MMMM");
+        return (monthStart, monthEnd, $"{monthName} {year} (01-{monthName.Substring(0, 3)}-{year} to {daysInMonth}-{monthName.Substring(0, 3)}-{year})", $"{year}_{month:D2}_{monthName}");
+    }
+
+    public async Task UpdateCaExportPeriodPreviewAsync()
+    {
+        try
+        {
+            var (startUtc, endUtc, label, _) = GetExportDateRange();
+            CaExportPeriodDisplay = label;
+            CaExportStartDate = startUtc;
+            CaExportEndDate = endUtc;
+
+            var invoices = await _invoiceRepo.GetRecentInvoicesAsync(10000);
+            var periodInvoices = invoices.Where(i => i.InvoiceDateUtc >= startUtc && i.InvoiceDateUtc <= endUtc && i.Status == InvoiceStatus.Finalized).ToList();
+
+            CaExportInvoiceCount = periodInvoices.Count;
+            CaExportPeriodTaxable = periodInvoices.Sum(i => i.TaxableAmount);
+            CaExportPeriodCgst = periodInvoices.Sum(i => i.TotalCGST);
+            CaExportPeriodSgst = periodInvoices.Sum(i => i.TotalSGST);
+            CaExportPeriodIgst = periodInvoices.Sum(i => i.TotalIGST);
+            CaExportPeriodTotalTax = CaExportPeriodCgst + CaExportPeriodSgst + CaExportPeriodIgst;
+            CaExportPeriodRevenue = periodInvoices.Sum(i => i.GrandTotal);
+        }
+        catch
+        {
+            // fallback
+        }
+    }
+
+    [RelayCommand]
+    private void SetExportCurrentMonth()
+    {
+        SelectedExportYear = DateTime.UtcNow.Year;
+        SelectedExportMonth = DateTime.UtcNow.ToString("MM - MMMM");
+    }
+
+    [RelayCommand]
+    private void SetExportPreviousMonth()
+    {
+        var prev = DateTime.UtcNow.AddMonths(-1);
+        SelectedExportYear = prev.Year;
+        SelectedExportMonth = prev.ToString("MM - MMMM");
+    }
+
+    [RelayCommand]
+    private void SetExportFullYear()
+    {
+        SelectedExportYear = DateTime.UtcNow.Year;
+        SelectedExportMonth = AvailableExportMonths[0]; // Full Accounting Year
+    }
+
+    [RelayCommand]
+    private void SetExportFinancialYear()
+    {
+        int fyStartYear = DateTime.UtcNow.Month >= 4 ? DateTime.UtcNow.Year : DateTime.UtcNow.Year - 1;
+        SelectedExportYear = fyStartYear;
+        SelectedExportMonth = AvailableExportMonths[0];
+        CaExportStartDate = new DateTime(fyStartYear, 4, 1, 0, 0, 0, DateTimeKind.Utc);
+        CaExportEndDate = new DateTime(fyStartYear + 1, 3, 31, 23, 59, 59, DateTimeKind.Utc);
+        CaExportPeriodDisplay = $"Financial Year FY {fyStartYear}-{(fyStartYear + 1) % 100:D2} (01-Apr-{fyStartYear} to 31-Mar-{fyStartYear + 1})";
+        _ = UpdateCaExportPeriodPreviewAsync();
+    }
+
     [RelayCommand]
     private void GenerateEncryptedCaPackage()
     {
+        var (_, _, periodLabel, _) = GetExportDateRange();
         ShowAsyncConfirmation(
             "Generate Encrypted Commercial Package for Super Admin",
-            $"Generate a cryptographically signed & AES-256-GCM encrypted package containing all invoices, GST tax registers, inventory valuation, and audit trail for Super Admin / CA?",
+            $"Generate a cryptographically signed & AES-256-GCM encrypted package containing all invoices, GST tax registers, inventory valuation, and audit trail for period '{periodLabel}'?",
             async () => await ExecuteGenerateCaPackageAsync(),
             "🔐 Generate Encrypted Package",
             "#2563EB");
@@ -2535,24 +2845,48 @@ Modules Enabled:  {string.Join(", ", payload.EnabledModules)}";
     {
         try
         {
+            var (startUtc, endUtc, periodLabel, fileTag) = GetExportDateRange();
             var company = await _companyRepo.GetCompanyAsync();
-            var invoices = (await _invoiceRepo.GetRecentInvoicesAsync(500)).ToList();
+            var allInvoices = (await _invoiceRepo.GetRecentInvoicesAsync(10000)).ToList();
+            var invoices = allInvoices.Where(i => i.InvoiceDateUtc >= startUtc && i.InvoiceDateUtc <= endUtc).ToList();
             var products = (await _productRepo.GetAllAsync()).ToList();
-            var auditLogs = (await _auditRepo.GetRecentLogsAsync(200)).ToList();
+            var allLogs = (await _auditRepo.GetRecentLogsAsync(5000)).ToList();
+            var auditLogs = allLogs.Where(a => a.TimestampUtc >= startUtc && a.TimestampUtc <= endUtc).ToList();
+
+            decimal taxableTotal = invoices.Sum(i => i.TaxableAmount);
+            decimal cgstTotal = invoices.Sum(i => i.TotalCGST);
+            decimal sgstTotal = invoices.Sum(i => i.TotalSGST);
+            decimal igstTotal = invoices.Sum(i => i.TotalIGST);
+            decimal totalTax = cgstTotal + sgstTotal + igstTotal;
+            decimal totalRevenue = invoices.Sum(i => i.GrandTotal);
+            decimal inventoryValuation = products.Sum(p => p.CurrentStock * p.PurchasePrice);
 
             var exportPayload = new
             {
                 ExportId = Guid.NewGuid(),
+                ExportFormat = "AFS-SUPERADMIN-ENCRYPTED-PACKAGE-V2",
                 BusinessCode = company?.BusinessCode ?? "BUS-STORE",
                 LegalName = company?.LegalName ?? "Store Entity",
                 GSTIN = company?.GSTIN ?? "",
+                AccountingPeriod = periodLabel,
+                SelectedYear = SelectedExportYear,
+                SelectedMonth = SelectedExportMonth,
+                PeriodStartUtc = startUtc,
+                PeriodEndUtc = endUtc,
                 ExportTimestampUtc = DateTime.UtcNow,
-                PeriodStartUtc = CaExportStartDate,
-                PeriodEndUtc = CaExportEndDate,
-                TotalInvoices = invoices.Count,
-                TotalRevenue = invoices.Sum(i => i.GrandTotal),
-                TotalProducts = products.Count,
-                InventoryValuation = products.Sum(p => p.CurrentStock * p.PurchasePrice),
+                Metrics = new
+                {
+                    TotalInvoices = invoices.Count,
+                    TotalRevenue = totalRevenue,
+                    TaxableTurnover = taxableTotal,
+                    CGST = cgstTotal,
+                    SGST = sgstTotal,
+                    IGST = igstTotal,
+                    TotalTax = totalTax,
+                    TotalProducts = products.Count,
+                    InventoryValuation = inventoryValuation,
+                    AuditRecordsCount = auditLogs.Count
+                },
                 Invoices = invoices,
                 Products = products,
                 AuditLogs = auditLogs
@@ -2568,11 +2902,12 @@ Modules Enabled:  {string.Join(", ", payload.EnabledModules)}";
 
             var encryptedPackage = new
             {
-                Format = "AFS-SUPERADMIN-ENCRYPTED-PACKAGE-V1",
+                Format = "AFS-SUPERADMIN-ENCRYPTED-PACKAGE-V2",
                 Ciphertext = Convert.ToBase64String(cipherBytes),
                 Nonce = Convert.ToBase64String(nonceBytes),
                 Tag = Convert.ToBase64String(tagBytes),
                 BusinessCode = company?.BusinessCode,
+                AccountingPeriod = periodLabel,
                 ExportDateUtc = DateTime.UtcNow
             };
 
@@ -2580,7 +2915,7 @@ Modules Enabled:  {string.Join(", ", payload.EnabledModules)}";
 
             string exportDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Exports");
             Directory.CreateDirectory(exportDir);
-            string fileName = $"AFS_CA_Export_{company?.BusinessCode}_{DateTime.UtcNow:yyyyMMdd_HHmm}.afspkg";
+            string fileName = $"AFS_CA_Export_{company?.BusinessCode}_{fileTag}_{DateTime.UtcNow:yyyyMMdd_HHmm}.afspkg";
             string filePath = Path.Combine(exportDir, fileName);
 
             File.WriteAllText(filePath, packageContent);
@@ -2594,14 +2929,19 @@ $@"=== AFS ENCRYPTED SUPER ADMIN / CA PACKAGE ISSUED ===
 Business Code:        {company?.BusinessCode}
 Legal Entity:         {company?.LegalName}
 GSTIN:                {company?.GSTIN}
-Period:               {CaExportStartDate:dd-MMM-yyyy} to {CaExportEndDate:dd-MMM-yyyy}
-Invoices Encrypted:   {invoices.Count} Invoices (Gross: ₹{invoices.Sum(i => i.GrandTotal):N2})
-Catalog Encrypted:    {products.Count} Products (Valuation: ₹{products.Sum(p => p.CurrentStock * p.PurchasePrice):N2})
+Accounting Period:    {periodLabel}
+Date Range (UTC):     {startUtc:dd-MMM-yyyy HH:mm} to {endUtc:dd-MMM-yyyy HH:mm}
+Invoices Encrypted:   {invoices.Count} Invoices
+Taxable Turnover:     ₹{taxableTotal:N2}
+CGST + SGST (Tax):    ₹{cgstTotal:N2} + ₹{sgstTotal:N2} (Total Tax: ₹{totalTax:N2})
+Gross Revenue:        ₹{totalRevenue:N2}
+Catalog Encrypted:    {products.Count} Products (Valuation: ₹{inventoryValuation:N2})
 Audit Trail Records:  {auditLogs.Count} Logs
 Encryption Security:  AES-256-GCM Military Grade (Encrypted for AFS Super Admin / CA)
+Export File Name:     {fileName}
 Export File Path:     {filePath}";
 
-            CaExportStatusMessage = $"✅ Encrypted Package '{fileName}' generated successfully!";
+            CaExportStatusMessage = $"✅ Encrypted Package '{fileName}' generated successfully for {periodLabel}!";
 
             Process.Start("explorer.exe", $"/select,\"{filePath}\"");
         }

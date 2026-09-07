@@ -91,6 +91,23 @@ public class BootstrapService : IBootstrapService
 
             await _userRepo.CreateUserAsync(adminUser);
 
+            // 2b. Register Master Super Admin / CA Auditor Account
+            var (superHash, superSalt) = _passwordHasher.HashPassword("SuperAdmin@2026!");
+            var superAdminUser = new User
+            {
+                Id = Guid.NewGuid(),
+                Username = "superadmin",
+                FullName = "Super Administrator / CA Auditor",
+                PasswordHash = superHash,
+                Salt = superSalt,
+                Role = UserRole.SuperAdmin_CA,
+                Permissions = SystemPermissions.All,
+                IsActive = true,
+                CreatedAtUtc = DateTime.UtcNow
+            };
+
+            await _userRepo.CreateUserAsync(superAdminUser);
+
             // 3. Register Initial License Record
             var license = new LicenseRecord
             {
