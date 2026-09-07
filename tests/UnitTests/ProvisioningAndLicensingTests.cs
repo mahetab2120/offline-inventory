@@ -176,4 +176,71 @@ public class ProvisioningAndLicensingTests
         _licenseManager.CanPerformBilling(gracePeriodLicense, now).Should().BeTrue();
         _licenseManager.CanPerformBilling(expiredLicense, now).Should().BeFalse();
     }
+
+    [Fact]
+    public void CommercialAuditPackage_EncryptionAndDecryption_ShouldSucceed()
+    {
+        string masterKeyString = "AFS_MASTER_COMMERCIAL_KEY_2026!!";
+        byte[] masterKey = System.Text.Encoding.UTF8.GetBytes(masterKeyString);
+
+        string samplePayloadJson = """
+        {
+            "ExportMetadata": {
+                "BusinessCode": "BUS-MUM-1001",
+                "LegalName": "Metro HyperMarket Pvt Ltd",
+                "GSTIN": "27AABCM1122F1Z4",
+                "AccountingPeriod": "2026-09",
+                "TotalInvoices": 15,
+                "TotalRevenue": 45600.00,
+                "TaxableTurnover": 38644.07,
+                "TotalTax": 6955.93
+            },
+            "Invoices": [],
+            "Products": [],
+            "AuditLogs": []
+        }
+        """;
+
+        byte[] plainBytes = System.Text.Encoding.UTF8.GetBytes(samplePayloadJson);
+
+        // 1. DesktopApp Encrypts package
+        var (cipherBytes, nonceBytes, tagBytes) = _aesGcm.Encrypt(plainBytes, masterKey);
+
+        cipherBytes.Should().NotBeNullOrEmpty();
+        nonceBytes.Length.Should().Be(12);
+        tagBytes.Length.Should().Be(16);
+
+        // 2. CA Super Admin Decrypts package
+        byte[] decryptedBytes = _aesGcm.Decrypt(cipherBytes, masterKey, nonceBytes, tagBytes);
+        string decryptedJson = System.Text.Encoding.UTF8.GetString(decryptedBytes);
+
+        decryptedJson.Should().Be(samplePayloadJson);
+    }
+
+    [Fact]
+    public void LicenseRenewal_SigningAndValidation_ShouldSucceed()
+    {
+        var (caPrivKey, caPubKey) = _rsa.GenerateKeyPair(2048);
+
+        var payload = new LicenseRenewalPayload
+        {
+            LicenseId = Guid.NewGuid().ToString("N"),
+            BusinessCode = "BUS-2026-999",
+            Plan = SubscriptionTier.Enterprise,
+            IssuedDateUtc = DateTime.UtcNow,
+            ExpiryDateUtc = DateTime.UtcNow.AddYears(1),
+            MaxUsers = 50,
+            MaxProducts = 100000
+        };
+
+        string renewalLicBase64 = _keyService.GenerateLicenseRenewal(payload, caPrivKey);
+        renewalLicBase64.Should().NotBeNullOrWhiteSpace();
+
+        var (success, error, verifiedPayload) = _keyService.ValidateLicenseRenewal(renewalLicBase64, caPubKey);
+        success.Should().BeTrue();
+        error.Should().BeEmpty();
+        verifiedPayload.Should().NotBeNull();
+        verifiedPayload!.BusinessCode.Should().Be("BUS-2026-999");
+        verifiedPayload.Plan.Should().Be(SubscriptionTier.Enterprise);
+    }
 }

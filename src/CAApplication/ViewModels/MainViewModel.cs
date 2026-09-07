@@ -1913,7 +1913,7 @@ Client Activation Instructions:
 
                 var aesGcm = new AesGcmService();
                 byte[] masterKey = Encoding.UTF8.GetBytes("AFS_MASTER_COMMERCIAL_KEY_2026!!");
-                byte[] decryptedBytes = aesGcm.Decrypt(cipherBytes, nonceBytes, tagBytes, masterKey);
+                byte[] decryptedBytes = aesGcm.Decrypt(cipherBytes, masterKey, nonceBytes, tagBytes);
                 plainJson = Encoding.UTF8.GetString(decryptedBytes);
             }
             else
