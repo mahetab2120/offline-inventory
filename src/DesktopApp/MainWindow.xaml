@@ -988,12 +988,11 @@
                                     <DataGridTextColumn Header="SELL RATE" Binding="{Binding SellingPrice, StringFormat='₹{0:N2}'}" Width="85"/>
                                     <DataGridTextColumn Header="GST" Binding="{Binding GSTRate, StringFormat='{}{0}%'}" Width="55"/>
                                     <DataGridTextColumn Header="STOCK" Binding="{Binding CurrentStock}" Width="65"/>
-                                    <DataGridTemplateColumn Header="STOCK CONTROLS" Width="130">
+                                    <DataGridTemplateColumn Header="STOCK CONTROLS" Width="140">
                                         <DataGridTemplateColumn.CellTemplate>
                                             <DataTemplate>
                                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                                                    <Button Content="➕ +10" Style="{StaticResource SuccessButton}" Padding="6,2" FontSize="10" Margin="0,0,4,0" Command="{Binding DataContext.QuickStockInCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}"/>
-                                                    <Button Content="➖ -1" Style="{StaticResource DangerButton}" Padding="6,2" FontSize="10" Command="{Binding DataContext.QuickStockOutCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}"/>
+                                                    <Button Content="📦 Adjust Stock" Style="{StaticResource PrimaryButton}" Background="#2563EB" Foreground="White" Height="28" Padding="10,0" FontSize="11" FontWeight="Bold" Command="{Binding DataContext.OpenStockControlModalCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}" ToolTip="Open Full Stock Control &amp; Adjustment Modal (Inward/Outward/Audit)"/>
                                                 </StackPanel>
                                             </DataTemplate>
                                         </DataGridTemplateColumn.CellTemplate>
@@ -1732,6 +1731,273 @@
                             </Grid.ColumnDefinitions>
                             <Button Grid.Column="0" Content="Cancel" Style="{StaticResource PrimaryButton}" Background="#334155" Height="42" Command="{Binding CloseCreateRackModalCommand}"/>
                             <Button Grid.Column="2" Content="💾 Save &amp; Select Location" Style="{StaticResource SuccessButton}" Height="42" FontSize="14" FontWeight="Bold" Command="{Binding SaveNewRackLocationCommand}"/>
+                        </Grid>
+                    </StackPanel>
+                </ScrollViewer>
+            </Border>
+        </Grid>
+
+        <!-- ========================================================================= -->
+        <!-- STOCK CONTROL & INVENTORY ADJUSTMENT MODAL OVERLAY                        -->
+        <!-- ========================================================================= -->
+        <Grid Background="#D9000000" Visibility="{Binding IsStockControlModalOpen, Converter={StaticResource BoolToVis}}">
+            <Border Width="640" MaxHeight="850" HorizontalAlignment="Center" VerticalAlignment="Center" Background="#0F172A" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1.5" CornerRadius="14" Padding="26">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel>
+                        <!-- Header -->
+                        <Grid Margin="0,0,0,16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="📦 " FontSize="20" VerticalAlignment="Center"/>
+                                    <TextBlock Text="STOCK CONTROL &amp; ADJUSTMENT" Foreground="{StaticResource AccentCyanBrush}" FontSize="17" FontWeight="Bold" VerticalAlignment="Center"/>
+                                </StackPanel>
+                                <TextBlock Text="Audit-tracked inventory stock inward, write-off, and recount control" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" Margin="0,3,0,0"/>
+                            </StackPanel>
+                            <Button Grid.Column="1" Content="✕" Background="Transparent" Foreground="{StaticResource TextSecondaryBrush}" FontSize="18" FontWeight="Bold" BorderThickness="0" Cursor="Hand" Command="{Binding CloseStockControlModalCommand}"/>
+                        </Grid>
+
+                        <!-- Product Overview Card -->
+                        <Border Background="#1E293B" CornerRadius="8" Padding="14,10" Margin="0,0,0,14" BorderBrush="#334155" BorderThickness="1">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Text="{Binding SelectedStockProduct.Name}" Foreground="White" FontSize="15" FontWeight="Bold" TextTrimming="CharacterEllipsis"/>
+                                    <StackPanel Orientation="Horizontal" Margin="0,3,0,0">
+                                        <TextBlock Text="Item Code: " Foreground="{StaticResource TextSecondaryBrush}" FontSize="11"/>
+                                        <TextBlock Text="{Binding SelectedStockProduct.SKU}" Foreground="{StaticResource AccentCyanBrush}" FontSize="11" FontWeight="SemiBold"/>
+                                        <TextBlock Text=" • Barcode: " Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" Margin="6,0,0,0"/>
+                                        <TextBlock Text="{Binding SelectedStockProduct.Barcode}" Foreground="#CBD5E1" FontSize="11"/>
+                                        <TextBlock Text=" • Unit: " Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" Margin="6,0,0,0"/>
+                                        <TextBlock Text="{Binding SelectedStockProduct.Unit}" Foreground="White" FontSize="11" FontWeight="Bold"/>
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal" Margin="0,3,0,0">
+                                        <TextBlock Text="Buy Rate: " Foreground="{StaticResource TextSecondaryBrush}" FontSize="10"/>
+                                        <TextBlock Text="{Binding SelectedStockProduct.PurchasePrice, StringFormat='₹{0:N2}'}" Foreground="#CBD5E1" FontSize="10"/>
+                                        <TextBlock Text=" • Sell Rate: " Foreground="{StaticResource TextSecondaryBrush}" FontSize="10" Margin="6,0,0,0"/>
+                                        <TextBlock Text="{Binding SelectedStockProduct.SellingPrice, StringFormat='₹{0:N2}'}" Foreground="{StaticResource SuccessGreenBrush}" FontSize="10" FontWeight="Bold"/>
+                                        <TextBlock Text=" • Location: " Foreground="{StaticResource TextSecondaryBrush}" FontSize="10" Margin="6,0,0,0"/>
+                                        <TextBlock Text="{Binding SelectedStockProduct.RackLocation, FallbackValue='-', TargetNullValue='-'}" Foreground="#CBD5E1" FontSize="10"/>
+                                    </StackPanel>
+                                </StackPanel>
+
+                                <!-- Current Stock Badge -->
+                                <Border Grid.Column="1" Background="#0F172A" CornerRadius="8" Padding="12,6" BorderBrush="{StaticResource AccentCyanBrush}" BorderThickness="1" VerticalAlignment="Center" Margin="10,0,0,0">
+                                    <StackPanel HorizontalAlignment="Center">
+                                        <TextBlock Text="CURRENT STOCK" Foreground="{StaticResource TextSecondaryBrush}" FontSize="9" FontWeight="Bold" HorizontalAlignment="Center"/>
+                                        <TextBlock Text="{Binding SelectedStockProduct.CurrentStock, StringFormat='{}{0:0.##}'}" Foreground="{StaticResource AccentCyanBrush}" FontSize="20" FontWeight="Bold" HorizontalAlignment="Center"/>
+                                    </StackPanel>
+                                </Border>
+                            </Grid>
+                        </Border>
+
+                        <!-- Operation Mode Selector (3 Buttons) -->
+                        <TextBlock Text="ADJUSTMENT TYPE *" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" FontWeight="Bold" Margin="0,0,0,6"/>
+                        <Grid Margin="0,0,0,14">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="8"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="8"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <!-- Stock IN Button -->
+                            <Button Grid.Column="0" Height="40" Padding="8,0" FontSize="12" FontWeight="Bold" Command="{Binding SetStockAdjustmentTypeCommand}" CommandParameter="Inward">
+                                <Button.Style>
+                                    <Style TargetType="Button" BasedOn="{StaticResource PrimaryButton}">
+                                        <Setter Property="Background" Value="#1E293B"/>
+                                        <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding StockAdjustmentType}" Value="Inward">
+                                                <Setter Property="Background" Value="{StaticResource SuccessGreenBrush}"/>
+                                                <Setter Property="Foreground" Value="White"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Button.Style>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="➕ " FontSize="13"/>
+                                    <TextBlock Text="Stock IN (Inward)"/>
+                                </StackPanel>
+                            </Button>
+
+                            <!-- Stock OUT Button -->
+                            <Button Grid.Column="2" Height="40" Padding="8,0" FontSize="12" FontWeight="Bold" Command="{Binding SetStockAdjustmentTypeCommand}" CommandParameter="Outward">
+                                <Button.Style>
+                                    <Style TargetType="Button" BasedOn="{StaticResource PrimaryButton}">
+                                        <Setter Property="Background" Value="#1E293B"/>
+                                        <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding StockAdjustmentType}" Value="Outward">
+                                                <Setter Property="Background" Value="{StaticResource DangerRedBrush}"/>
+                                                <Setter Property="Foreground" Value="White"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Button.Style>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="➖ " FontSize="13"/>
+                                    <TextBlock Text="Stock OUT (Deduct)"/>
+                                </StackPanel>
+                            </Button>
+
+                            <!-- Set Count Button -->
+                            <Button Grid.Column="4" Height="40" Padding="8,0" FontSize="12" FontWeight="Bold" Command="{Binding SetStockAdjustmentTypeCommand}" CommandParameter="Set">
+                                <Button.Style>
+                                    <Style TargetType="Button" BasedOn="{StaticResource PrimaryButton}">
+                                        <Setter Property="Background" Value="#1E293B"/>
+                                        <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding StockAdjustmentType}" Value="Set">
+                                                <Setter Property="Background" Value="{StaticResource PrimaryBlueBrush}"/>
+                                                <Setter Property="Foreground" Value="White"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Button.Style>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="🔄 " FontSize="13"/>
+                                    <TextBlock Text="Set Exact Count"/>
+                                </StackPanel>
+                            </Button>
+                        </Grid>
+
+                        <!-- Quantity Input & Fast Preset Pills -->
+                        <Grid Margin="0,0,0,12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="14"/>
+                                <ColumnDefinition Width="1.5*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="QUANTITY TO ADJUST *" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" FontWeight="Bold" Margin="0,0,0,4"/>
+                                <TextBox Text="{Binding StockAdjustmentQuantity, UpdateSourceTrigger=PropertyChanged, StringFormat='{}{0:0.##}'}" Tag="Enter qty..." Style="{StaticResource ModernTextBox}" Height="40" FontSize="16" FontWeight="Bold" Foreground="{StaticResource AccentCyanBrush}"/>
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="2" VerticalAlignment="Center">
+                                <TextBlock Text="FAST PRESET BUTTONS:" Foreground="{StaticResource TextSecondaryBrush}" FontSize="10" FontWeight="Bold" Margin="0,0,0,4"/>
+                                <WrapPanel>
+                                    <Button Content="+1" Style="{StaticResource PrimaryButton}" Background="#1E293B" Height="28" Padding="8,0" FontSize="11" Margin="0,0,4,4" Command="{Binding QuickAddAdjustmentQtyCommand}" CommandParameter="1"/>
+                                    <Button Content="+5" Style="{StaticResource PrimaryButton}" Background="#1E293B" Height="28" Padding="8,0" FontSize="11" Margin="0,0,4,4" Command="{Binding QuickAddAdjustmentQtyCommand}" CommandParameter="5"/>
+                                    <Button Content="+10" Style="{StaticResource PrimaryButton}" Background="#1E293B" Height="28" Padding="8,0" FontSize="11" Margin="0,0,4,4" Command="{Binding QuickAddAdjustmentQtyCommand}" CommandParameter="10"/>
+                                    <Button Content="+25" Style="{StaticResource PrimaryButton}" Background="#1E293B" Height="28" Padding="8,0" FontSize="11" Margin="0,0,4,4" Command="{Binding QuickAddAdjustmentQtyCommand}" CommandParameter="25"/>
+                                    <Button Content="+50" Style="{StaticResource PrimaryButton}" Background="#1E293B" Height="28" Padding="8,0" FontSize="11" Margin="0,0,4,4" Command="{Binding QuickAddAdjustmentQtyCommand}" CommandParameter="50"/>
+                                    <Button Content="+100" Style="{StaticResource PrimaryButton}" Background="#1E293B" Height="28" Padding="8,0" FontSize="11" Margin="0,0,4,4" Command="{Binding QuickAddAdjustmentQtyCommand}" CommandParameter="100"/>
+                                    <Button Content="+500" Style="{StaticResource PrimaryButton}" Background="#1E293B" Height="28" Padding="8,0" FontSize="11" Margin="0,0,4,4" Command="{Binding QuickAddAdjustmentQtyCommand}" CommandParameter="500"/>
+                                </WrapPanel>
+                            </StackPanel>
+                        </Grid>
+
+                        <!-- Live Stock Change Calculation Box -->
+                        <Border Background="#111827" CornerRadius="8" Padding="14,10" Margin="0,0,0,14" BorderBrush="{StaticResource AccentCyanBrush}" BorderThickness="1">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+
+                                <!-- Current -->
+                                <StackPanel Grid.Column="0" HorizontalAlignment="Center">
+                                    <TextBlock Text="Current Stock" Foreground="{StaticResource TextSecondaryBrush}" FontSize="10" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="{Binding SelectedStockProduct.CurrentStock, StringFormat='{}{0:0.##}'}" Foreground="White" FontSize="15" FontWeight="Bold" HorizontalAlignment="Center"/>
+                                </StackPanel>
+
+                                <TextBlock Grid.Column="1" Text="➔" Foreground="{StaticResource TextSecondaryBrush}" FontSize="16" VerticalAlignment="Center" Margin="6,0"/>
+
+                                <!-- Change -->
+                                <StackPanel Grid.Column="2" HorizontalAlignment="Center">
+                                    <TextBlock Text="Adjustment" Foreground="{StaticResource TextSecondaryBrush}" FontSize="10" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="{Binding StockAdjustmentQuantity, StringFormat='{}{0:0.##}'}" Foreground="{StaticResource WarningAmberBrush}" FontSize="15" FontWeight="Bold" HorizontalAlignment="Center"/>
+                                </StackPanel>
+
+                                <TextBlock Grid.Column="3" Text="➔" Foreground="{StaticResource TextSecondaryBrush}" FontSize="16" VerticalAlignment="Center" Margin="6,0"/>
+
+                                <!-- Resulting -->
+                                <StackPanel Grid.Column="4" HorizontalAlignment="Center">
+                                    <TextBlock Text="Resulting Stock" Foreground="{StaticResource TextSecondaryBrush}" FontSize="10" FontWeight="Bold" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="{Binding CalculatedNewStock, StringFormat='{}{0:0.##}'}" Foreground="{StaticResource SuccessGreenBrush}" FontSize="18" FontWeight="Bold" HorizontalAlignment="Center"/>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+
+                        <!-- Reason & Reference Info -->
+                        <Grid Margin="0,0,0,10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="1.2*"/>
+                                <ColumnDefinition Width="10"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="Reason for Stock Adjustment *" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" FontWeight="Bold" Margin="0,0,0,3"/>
+                                <ComboBox ItemsSource="{Binding AvailableStockReasons}" SelectedItem="{Binding StockAdjustmentReason}" Style="{StaticResource ModernComboBox}" Height="36" FontSize="11"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="Ref / Invoice / GRN #" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" FontWeight="Bold" Margin="0,0,0,3"/>
+                                <TextBox Text="{Binding StockReferenceNumber, UpdateSourceTrigger=PropertyChanged}" Tag="e.g. GRN-2026-081" Style="{StaticResource ModernTextBox}" Height="36" FontSize="12"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <!-- Party / Supplier & Rack Location -->
+                        <Grid Margin="0,0,0,10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="10"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="Supplier / Party (Optional)" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" FontWeight="Bold" Margin="0,0,0,3"/>
+                                <TextBox Text="{Binding StockSupplierOrParty, UpdateSourceTrigger=PropertyChanged}" Tag="e.g. Sun Pharma Distributor" Style="{StaticResource ModernTextBox}" Height="36" FontSize="12"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="Rack / Storage Location" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" FontWeight="Bold" Margin="0,0,0,3"/>
+                                <ComboBox ItemsSource="{Binding AvailableRackLocations}" SelectedItem="{Binding StockUpdatedRack}" Style="{StaticResource ModernComboBox}" Height="36" FontSize="11" ToolTip="{Binding StockUpdatedRack}"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <!-- Batch Number & Expiry Date (Optional Updates) -->
+                        <Grid Margin="0,0,0,10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="10"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="Batch Number (Optional Update)" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" FontWeight="Bold" Margin="0,0,0,3"/>
+                                <TextBox Text="{Binding StockUpdatedBatch, UpdateSourceTrigger=PropertyChanged}" Tag="e.g. BAT-2609" Style="{StaticResource ModernTextBox}" Height="36" FontSize="12"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="Expiry Date (Optional Update)" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" FontWeight="Bold" Margin="0,0,0,3"/>
+                                <DatePicker SelectedDate="{Binding StockUpdatedExpiry}" Style="{StaticResource ModernDatePicker}" Height="36" FontSize="12"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <!-- Notes -->
+                        <TextBlock Text="Audit Notes / Explanation" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" FontWeight="Bold" Margin="0,0,0,3"/>
+                        <TextBox Text="{Binding StockAdjustmentNotes, UpdateSourceTrigger=PropertyChanged}" Tag="e.g. Physical inventory count correction during monthly audit." Style="{StaticResource ModernTextBox}" Height="36" FontSize="12" Margin="0,0,0,12"/>
+
+                        <!-- Message -->
+                        <TextBlock Text="{Binding StockControlMessage}" Foreground="{StaticResource SuccessGreenBrush}" FontSize="12" FontWeight="Bold" Margin="0,0,0,12" TextWrapping="Wrap"/>
+
+                        <!-- Action Buttons -->
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="12"/>
+                                <ColumnDefinition Width="2*"/>
+                            </Grid.ColumnDefinitions>
+                            <Button Grid.Column="0" Content="❌ Cancel" Style="{StaticResource PrimaryButton}" Background="#334155" Height="42" FontSize="13" Command="{Binding CloseStockControlModalCommand}"/>
+                            <Button Grid.Column="2" Content="💾 Confirm &amp; Apply Stock Change" Style="{StaticResource SuccessButton}" Height="42" FontSize="13" FontWeight="Bold" Command="{Binding ConfirmStockAdjustmentCommand}"/>
                         </Grid>
                     </StackPanel>
                 </ScrollViewer>

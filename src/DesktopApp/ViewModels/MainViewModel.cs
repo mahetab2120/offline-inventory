@@ -560,6 +560,82 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private string inventoryFormMessage = string.Empty;
 
+    // --- Stock Control & Adjustment Modal State ---
+    [ObservableProperty]
+    private bool isStockControlModalOpen = false;
+
+    [ObservableProperty]
+    private Product? selectedStockProduct;
+
+    [ObservableProperty]
+    private string stockAdjustmentType = "Inward"; // "Inward" (Stock IN), "Outward" (Stock OUT), "Set" (Direct Override)
+
+    [ObservableProperty]
+    private decimal stockAdjustmentQuantity = 10;
+
+    [ObservableProperty]
+    private string stockAdjustmentReason = "📥 Supplier Purchase / Goods Inward";
+
+    [ObservableProperty]
+    private string stockReferenceNumber = string.Empty;
+
+    [ObservableProperty]
+    private string stockSupplierOrParty = string.Empty;
+
+    [ObservableProperty]
+    private string stockAdjustmentNotes = string.Empty;
+
+    [ObservableProperty]
+    private string stockControlMessage = string.Empty;
+
+    [ObservableProperty]
+    private string stockUpdatedBatch = string.Empty;
+
+    [ObservableProperty]
+    private DateTime? stockUpdatedExpiry;
+
+    [ObservableProperty]
+    private string stockUpdatedRack = string.Empty;
+
+    public ObservableCollection<string> AvailableStockReasons { get; } = new()
+    {
+        "📥 Supplier Purchase / Goods Inward",
+        "🔄 Inventory Audit / Physical Stock Recount",
+        "↩️ Customer Return / Sales Inward",
+        "⚠️ Damaged / Broken Goods Write-Off",
+        "⏳ Expired Stock Disposal",
+        "🧪 Internal Testing / Samples / Consumption",
+        "📦 Warehouse / Rack Relocation",
+        "✏️ Manual Inventory Correction"
+    };
+
+    public decimal CalculatedNewStock
+    {
+        get
+        {
+            if (SelectedStockProduct == null) return 0;
+            decimal cur = SelectedStockProduct.CurrentStock;
+            decimal qty = Math.Max(0, StockAdjustmentQuantity);
+
+            if (StockAdjustmentType == "Inward" || StockAdjustmentType == "IN")
+            {
+                return cur + qty;
+            }
+            else if (StockAdjustmentType == "Outward" || StockAdjustmentType == "OUT")
+            {
+                return Math.Max(0, cur - qty);
+            }
+            else // "Set"
+            {
+                return qty;
+            }
+        }
+    }
+
+    partial void OnStockAdjustmentTypeChanged(string value) => OnPropertyChanged(nameof(CalculatedNewStock));
+    partial void OnStockAdjustmentQuantityChanged(decimal value) => OnPropertyChanged(nameof(CalculatedNewStock));
+    partial void OnSelectedStockProductChanged(Product? value) => OnPropertyChanged(nameof(CalculatedNewStock));
+
     // --- Pharmacy Batch Tracker State ---
     [ObservableProperty]
     private string pharmacySearchQuery = string.Empty;
@@ -2004,6 +2080,151 @@ Modules Enabled:  {string.Join(", ", payload.EnabledModules)}";
         }
 
         RefreshFilteredPosProducts();
+    }
+
+    // --- Stock Control & Adjustment Modal Actions ---
+
+    [RelayCommand]
+    private void OpenStockControlModal(object? productObj)
+    {
+        if (productObj is not Product product) return;
+
+        SelectedStockProduct = product;
+        StockAdjustmentType = "Inward";
+        StockAdjustmentQuantity = 10;
+        StockAdjustmentReason = "📥 Supplier Purchase / Goods Inward";
+        StockReferenceNumber = string.Empty;
+        StockSupplierOrParty = string.Empty;
+        StockAdjustmentNotes = string.Empty;
+        StockControlMessage = string.Empty;
+        StockUpdatedBatch = product.BatchNumber ?? string.Empty;
+        StockUpdatedExpiry = product.ExpiryDate;
+        StockUpdatedRack = product.RackLocation ?? string.Empty;
+
+        OnPropertyChanged(nameof(CalculatedNewStock));
+        IsStockControlModalOpen = true;
+    }
+
+    [RelayCommand]
+    private void CloseStockControlModal()
+    {
+        IsStockControlModalOpen = false;
+        StockControlMessage = string.Empty;
+    }
+
+    [RelayCommand]
+    private void SetStockAdjustmentType(string type)
+    {
+        StockAdjustmentType = type;
+        if (type == "Inward")
+        {
+            StockAdjustmentReason = "📥 Supplier Purchase / Goods Inward";
+        }
+        else if (type == "Outward")
+        {
+            StockAdjustmentReason = "⚠️ Damaged / Broken Goods Write-Off";
+        }
+        else if (type == "Set")
+        {
+            StockAdjustmentReason = "🔄 Inventory Audit / Physical Stock Recount";
+            if (SelectedStockProduct != null)
+            {
+                StockAdjustmentQuantity = SelectedStockProduct.CurrentStock;
+            }
+        }
+        OnPropertyChanged(nameof(CalculatedNewStock));
+    }
+
+    [RelayCommand]
+    private void QuickAddAdjustmentQty(string amountStr)
+    {
+        if (decimal.TryParse(amountStr, out decimal amt))
+        {
+            StockAdjustmentQuantity += amt;
+            if (StockAdjustmentQuantity < 0) StockAdjustmentQuantity = 0;
+            OnPropertyChanged(nameof(CalculatedNewStock));
+        }
+    }
+
+    [RelayCommand]
+    private void SetAdjustmentQtyPreset(string amountStr)
+    {
+        if (decimal.TryParse(amountStr, out decimal amt))
+        {
+            StockAdjustmentQuantity = amt;
+            OnPropertyChanged(nameof(CalculatedNewStock));
+        }
+    }
+
+    [RelayCommand]
+    private async Task ConfirmStockAdjustment()
+    {
+        if (SelectedStockProduct == null) return;
+
+        var product = SelectedStockProduct;
+        decimal oldStock = product.CurrentStock;
+        decimal targetStock = CalculatedNewStock;
+        decimal diff = targetStock - oldStock;
+
+        if (diff == 0 && StockAdjustmentType != "Set")
+        {
+            StockControlMessage = "⚠️ Adjustment quantity must be greater than zero.";
+            return;
+        }
+
+        try
+        {
+            // 1. Update product stock in repo
+            await _productRepo.AdjustStockAsync(product.Id, diff);
+            product.CurrentStock = targetStock;
+
+            // 2. Optionally update batch, expiry, or rack location if modified
+            bool metadataChanged = false;
+            if (!string.IsNullOrWhiteSpace(StockUpdatedBatch) && StockUpdatedBatch != product.BatchNumber)
+            {
+                product.BatchNumber = StockUpdatedBatch.Trim();
+                metadataChanged = true;
+            }
+            if (StockUpdatedExpiry.HasValue && StockUpdatedExpiry != product.ExpiryDate)
+            {
+                product.ExpiryDate = StockUpdatedExpiry;
+                metadataChanged = true;
+            }
+            if (!string.IsNullOrWhiteSpace(StockUpdatedRack) && StockUpdatedRack != product.RackLocation)
+            {
+                product.RackLocation = StockUpdatedRack.Trim();
+                metadataChanged = true;
+            }
+
+            if (metadataChanged)
+            {
+                await _productRepo.UpdateAsync(product);
+            }
+
+            // 3. Log Audit Trail
+            var audit = new AuditLog
+            {
+                UserId = CurrentUser?.Id,
+                Username = CurrentUser?.Username ?? "admin",
+                Module = "Inventory",
+                Action = AuditActionType.StockAdjusted,
+                RecordId = product.Id.ToString(),
+                OldValue = $"Stock: {oldStock:0.##}",
+                NewValue = $"Stock: {targetStock:0.##} ({StockAdjustmentType}: {diff:+0.##;-0.##})",
+                Reason = $"{StockAdjustmentReason}. Ref: {StockReferenceNumber} {StockSupplierOrParty}. Notes: {StockAdjustmentNotes}".Trim()
+            };
+            await _auditRepo.LogAsync(audit);
+
+            await LoadDashboardDataAsync();
+
+            StockControlMessage = $"✅ Stock for '{product.Name}' updated to {targetStock:0.##} {product.Unit}!";
+            await Task.Delay(500);
+            IsStockControlModalOpen = false;
+        }
+        catch (Exception ex)
+        {
+            StockControlMessage = $"❌ Error adjusting stock: {ex.Message}";
+        }
     }
 
     [RelayCommand]
