@@ -129,7 +129,7 @@
 
                     <!-- Username -->
                     <TextBlock Text="Operator / Admin Username" Foreground="{StaticResource TextSecondaryBrush}" FontSize="13" Margin="0,0,0,6"/>
-                    <TextBox Text="{Binding LoginUsername, UpdateSourceTrigger=PropertyChanged}" Tag="Enter admin / staff username (e.g. admin)" Style="{StaticResource ModernTextBox}" Height="48" FontSize="15" Margin="0,0,0,16"/>
+                    <TextBox Text="{Binding LoginUsername, UpdateSourceTrigger=PropertyChanged}" Tag="Enter admin / staff username (e.g. admin)" Style="{StaticResource ModernTextBox}" Height="48" FontSize="15" Margin="0,0,0,16" KeyDown="LoginInput_KeyDown"/>
 
                     <!-- Password with Show/Hide Toggle -->
                     <TextBlock Text="Password" Foreground="{StaticResource TextSecondaryBrush}" FontSize="13" Margin="0,0,0,6"/>
@@ -147,6 +147,7 @@
                                      FontSize="18"
                                      PasswordChar="●"
                                      PasswordChanged="StorePasswordBox_PasswordChanged"
+                                     KeyDown="LoginInput_KeyDown"
                                      Visibility="{Binding IsPasswordMasked, Converter={StaticResource BoolToVis}}"/>
 
                         <TextBox Grid.Column="0"
@@ -155,6 +156,7 @@
                                  Style="{StaticResource ModernTextBox}"
                                  Height="48"
                                  FontSize="15"
+                                 KeyDown="LoginInput_KeyDown"
                                  Visibility="{Binding IsPasswordVisible, Converter={StaticResource BoolToVis}}"/>
 
                         <Button Grid.Column="1"
@@ -172,7 +174,7 @@
 
                     <TextBlock Text="{Binding LoginErrorMessage}" Foreground="{StaticResource DangerRedBrush}" FontSize="13" Margin="0,0,0,16" TextWrapping="Wrap" FontWeight="SemiBold"/>
 
-                    <Button Content="🚀 Sign In to Store Dashboard" Style="{StaticResource PrimaryButton}" Height="48" FontSize="16" Command="{Binding PerformLoginCommand}" Margin="0,0,0,14"/>
+                    <Button Content="🚀 Sign In to Store Dashboard" Style="{StaticResource PrimaryButton}" Height="48" FontSize="16" Command="{Binding PerformLoginCommand}" Margin="0,0,0,14" IsDefault="True"/>
 
                     <!-- Role Access Quick Hints -->
                     <Border Background="#0B0F17" CornerRadius="6" Padding="12,8" BorderBrush="#1E293B" BorderThickness="1">

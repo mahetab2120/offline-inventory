@@ -42,4 +42,22 @@ public partial class MainWindow : Window
             }
         }
     }
+
+    private void LoginInput_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+    {
+        if (e.Key == System.Windows.Input.Key.Enter)
+        {
+            if (DataContext is MainViewModel vm && vm.CurrentViewState == "Login")
+            {
+                if (sender is PasswordBox pb)
+                {
+                    vm.LoginPassword = pb.Password;
+                }
+                if (vm.PerformLoginCommand.CanExecute(null))
+                {
+                    vm.PerformLoginCommand.Execute(null);
+                }
+            }
+        }
+    }
 }
