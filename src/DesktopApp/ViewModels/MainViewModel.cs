@@ -442,7 +442,17 @@ public partial class MainViewModel : ObservableObject
     };
 
     // Add Product Form Dropdowns & Properties
-    public ObservableCollection<string> AvailableCategories { get; } = new();
+    public ObservableCollection<string> AvailableCategories { get; } = new()
+    {
+        "💊 Pharmaceuticals & Tablets",
+        "🧪 Syrups, Suspensions & Liquids",
+        "💉 Injections & Vaccines",
+        "🩹 Surgicals & First Aid",
+        "🧴 Personal Care & Hygiene",
+        "🍼 Baby Care & Nutrition",
+        "🛒 FMCG & Groceries",
+        "📦 General Store Items"
+    };
 
     public ObservableCollection<string> AvailableUnits { get; } = new()
     {
@@ -903,6 +913,7 @@ public partial class MainViewModel : ObservableObject
         _bootstrapService = new BootstrapService(_companyRepo, _userRepo, _licenseRepo, _auditRepo, _hasher);
         _authService = new AuthenticationService(_userRepo, _hasher, _auditRepo);
 
+        SynchronizeCategoryLists();
         InitializeDatabaseAndCheckState(dbInit);
     }
 
@@ -2284,17 +2295,16 @@ Modules Enabled:  {string.Join(", ", payload.EnabledModules)}";
             PosCategories.Add(c);
         }
 
-        if (!AvailableCategories.Contains(SelectedCategory ?? string.Empty))
+        if (string.IsNullOrWhiteSpace(SelectedCategory) || !AvailableCategories.Contains(SelectedCategory))
         {
-            if (string.IsNullOrWhiteSpace(SelectedCategory))
-            {
-                SelectedCategory = AvailableCategories.FirstOrDefault() ?? "General";
-            }
+            var match = AvailableCategories.FirstOrDefault(c => CleanCategoryName(c) == CleanCategoryName(SelectedCategory));
+            SelectedCategory = match ?? AvailableCategories.FirstOrDefault() ?? "💊 Pharmaceuticals & Tablets";
         }
 
         if (!PosCategories.Contains(SelectedPosCategory))
         {
-            SelectedPosCategory = "🌟 All Categories";
+            var matchPos = PosCategories.FirstOrDefault(c => CleanCategoryName(c) == CleanCategoryName(SelectedPosCategory));
+            SelectedPosCategory = matchPos ?? "🌟 All Categories";
         }
 
         RefreshFilteredPosProducts();
