@@ -175,6 +175,7 @@ public class DatabaseInitializer
             barcode VARCHAR(100),
             hsn_code VARCHAR(50),
             category_id UUID REFERENCES categories(id) ON DELETE SET NULL,
+            category_name VARCHAR(150) NOT NULL DEFAULT 'General',
             unit VARCHAR(20) NOT NULL DEFAULT 'PCS',
             purchase_price NUMERIC(15, 2) NOT NULL DEFAULT 0,
             selling_price NUMERIC(15, 2) NOT NULL DEFAULT 0,
@@ -184,6 +185,7 @@ public class DatabaseInitializer
             current_stock NUMERIC(15, 2) NOT NULL DEFAULT 0,
             min_stock_alert NUMERIC(15, 2) NOT NULL DEFAULT 5,
             rack_location_id UUID REFERENCES rack_locations(id) ON DELETE SET NULL,
+            rack_location VARCHAR(150) NOT NULL DEFAULT 'Shelf A-01',
             batch_number VARCHAR(100),
             expiry_date TIMESTAMP WITH TIME ZONE,
             is_active BOOLEAN NOT NULL DEFAULT TRUE,
@@ -263,6 +265,9 @@ public class DatabaseInitializer
         CREATE INDEX IF NOT EXISTS idx_invoices_date ON invoices(invoice_date_utc);
         CREATE INDEX IF NOT EXISTS idx_decrypted_audit_business ON decrypted_audit_packages(business_code);
         CREATE INDEX IF NOT EXISTS idx_decrypted_audit_date ON decrypted_audit_packages(decrypted_at_utc);
+
+        ALTER TABLE products ADD COLUMN IF NOT EXISTS category_name VARCHAR(150) NOT NULL DEFAULT 'General';
+        ALTER TABLE products ADD COLUMN IF NOT EXISTS rack_location VARCHAR(150) NOT NULL DEFAULT 'Shelf A-01';
         ";
 
         await conn.ExecuteAsync(schemaSql);

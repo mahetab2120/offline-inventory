@@ -1198,6 +1198,17 @@ Modules Enabled:  {string.Join(", ", payload.EnabledModules)}";
                 AvailableProducts.Add(p);
                 totalStockVal += p.CurrentStock * p.PurchasePrice;
 
+                // Dynamically sync any custom category found on products into MasterCategoryList
+                if (!string.IsNullOrWhiteSpace(p.CategoryName))
+                {
+                    string cleanCat = FormatCategoryDisplay(p.CategoryName);
+                    bool exists = MasterCategoryList.Any(c => CleanCategoryName(c) == CleanCategoryName(cleanCat));
+                    if (!exists && !string.IsNullOrWhiteSpace(cleanCat) && !cleanCat.Equals("General", StringComparison.OrdinalIgnoreCase))
+                    {
+                        MasterCategoryList.Add($"📦 {cleanCat}");
+                    }
+                }
+
                 if (p.CurrentStock <= p.MinStockAlert)
                 {
                     LowStockProducts.Add(p);
@@ -1218,7 +1229,7 @@ Modules Enabled:  {string.Join(", ", payload.EnabledModules)}";
                         MRP = p.MRP,
                         PurchasePrice = p.PurchasePrice,
                         SellingPrice = p.SellingPrice,
-                        RackLocation = "Shelf A1"
+                        RackLocation = string.IsNullOrWhiteSpace(p.RackLocation) ? "Shelf A1" : p.RackLocation
                     });
                 }
             }
@@ -1229,6 +1240,29 @@ Modules Enabled:  {string.Join(", ", payload.EnabledModules)}";
 
             PharmacyExpiredCount = AllPharmacyBatches.Count(b => b.DaysToExpiry < 0);
             PharmacyNearExpiryCount = AllPharmacyBatches.Count(b => b.DaysToExpiry is >= 0 and <= 60);
+
+            // Dynamic Category Distributions Calculation
+            CategoryDistributions.Clear();
+            if (products.Count > 0 && totalStockVal > 0)
+            {
+                var grouped = products
+                    .GroupBy(p => FormatCategoryDisplay(p.CategoryName))
+                    .Select(g => new CategoryDistributionItem
+                    {
+                        CategoryName = g.Key,
+                        ProductCount = g.Count(),
+                        TotalStockValue = g.Sum(p => p.CurrentStock * p.PurchasePrice),
+                        Percentage = (double)Math.Round((g.Sum(p => p.CurrentStock * p.PurchasePrice) / totalStockVal) * 100, 1)
+                    })
+                    .OrderByDescending(c => c.TotalStockValue)
+                    .Take(6)
+                    .ToList();
+
+                foreach (var item in grouped)
+                {
+                    CategoryDistributions.Add(item);
+                }
+            }
 
             // Pharmacy batch summary for dashboard
             ExpiringBatchesSummary.Clear();
@@ -1301,11 +1335,13 @@ Modules Enabled:  {string.Join(", ", payload.EnabledModules)}";
         WeeklySalesTrends.Add(new WeeklySalesItem { DayName = "Sat", SalesAmount = 34200, BarHeight = 170 });
         WeeklySalesTrends.Add(new WeeklySalesItem { DayName = "Today", SalesAmount = todaySales > 0 ? todaySales : 28900, BarHeight = 145 });
 
-        CategoryDistributions.Clear();
-        CategoryDistributions.Add(new CategoryDistributionItem { CategoryName = "Pharmaceuticals & Meds", ProductCount = 28, TotalStockValue = 425000, Percentage = 45 });
-        CategoryDistributions.Add(new CategoryDistributionItem { CategoryName = "Surgicals & First Aid", ProductCount = 12, TotalStockValue = 185000, Percentage = 20 });
-        CategoryDistributions.Add(new CategoryDistributionItem { CategoryName = "Personal Care & Hygiene", ProductCount = 18, TotalStockValue = 145000, Percentage = 15 });
-        CategoryDistributions.Add(new CategoryDistributionItem { CategoryName = "FMCG & Groceries", ProductCount = 35, TotalStockValue = 195000, Percentage = 20 });
+        if (CategoryDistributions.Count == 0)
+        {
+            CategoryDistributions.Add(new CategoryDistributionItem { CategoryName = "Pharmaceuticals & Tablets", ProductCount = 28, TotalStockValue = 425000, Percentage = 45 });
+            CategoryDistributions.Add(new CategoryDistributionItem { CategoryName = "Surgicals & First Aid", ProductCount = 12, TotalStockValue = 185000, Percentage = 20 });
+            CategoryDistributions.Add(new CategoryDistributionItem { CategoryName = "Personal Care & Hygiene", ProductCount = 18, TotalStockValue = 145000, Percentage = 15 });
+            CategoryDistributions.Add(new CategoryDistributionItem { CategoryName = "FMCG & Groceries", ProductCount = 35, TotalStockValue = 195000, Percentage = 20 });
+        }
     }
 
     // --- POS Quick Billing Actions ---

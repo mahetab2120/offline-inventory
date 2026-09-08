@@ -256,11 +256,12 @@ public class PostgresProductRepository : IProductRepository
         using var conn = _factory.CreateConnection();
         const string sql = @"
             SELECT id, name, sku, barcode, hsn_code AS HSNCode, category_id AS CategoryId,
-                   unit, purchase_price AS PurchasePrice, selling_price AS SellingPrice,
-                   mrp AS MRP, gst_rate AS GSTRate, cess_rate AS CessRate,
-                   current_stock AS CurrentStock, min_stock_alert AS MinStockAlert,
-                   rack_location_id AS RackLocationId, batch_number AS BatchNumber,
-                   expiry_date AS ExpiryDate, is_active AS IsActive, created_at_utc AS CreatedAtUtc
+                   category_name AS CategoryName, unit, purchase_price AS PurchasePrice,
+                   selling_price AS SellingPrice, mrp AS MRP, gst_rate AS GSTRate,
+                   cess_rate AS CessRate, current_stock AS CurrentStock, min_stock_alert AS MinStockAlert,
+                   rack_location_id AS RackLocationId, rack_location AS RackLocation,
+                   batch_number AS BatchNumber, expiry_date AS ExpiryDate, is_active AS IsActive,
+                   created_at_utc AS CreatedAtUtc
             FROM products
             WHERE id = @Id;";
         return await conn.QueryFirstOrDefaultAsync<Product>(sql, new { Id = id });
@@ -271,11 +272,12 @@ public class PostgresProductRepository : IProductRepository
         using var conn = _factory.CreateConnection();
         const string sql = @"
             SELECT id, name, sku, barcode, hsn_code AS HSNCode, category_id AS CategoryId,
-                   unit, purchase_price AS PurchasePrice, selling_price AS SellingPrice,
-                   mrp AS MRP, gst_rate AS GSTRate, cess_rate AS CessRate,
-                   current_stock AS CurrentStock, min_stock_alert AS MinStockAlert,
-                   rack_location_id AS RackLocationId, batch_number AS BatchNumber,
-                   expiry_date AS ExpiryDate, is_active AS IsActive, created_at_utc AS CreatedAtUtc
+                   category_name AS CategoryName, unit, purchase_price AS PurchasePrice,
+                   selling_price AS SellingPrice, mrp AS MRP, gst_rate AS GSTRate,
+                   cess_rate AS CessRate, current_stock AS CurrentStock, min_stock_alert AS MinStockAlert,
+                   rack_location_id AS RackLocationId, rack_location AS RackLocation,
+                   batch_number AS BatchNumber, expiry_date AS ExpiryDate, is_active AS IsActive,
+                   created_at_utc AS CreatedAtUtc
             FROM products
             WHERE LOWER(barcode) = LOWER(@Code) OR LOWER(sku) = LOWER(@Code)
             LIMIT 1;";
@@ -287,11 +289,12 @@ public class PostgresProductRepository : IProductRepository
         using var conn = _factory.CreateConnection();
         const string sql = @"
             SELECT id, name, sku, barcode, hsn_code AS HSNCode, category_id AS CategoryId,
-                   unit, purchase_price AS PurchasePrice, selling_price AS SellingPrice,
-                   mrp AS MRP, gst_rate AS GSTRate, cess_rate AS CessRate,
-                   current_stock AS CurrentStock, min_stock_alert AS MinStockAlert,
-                   rack_location_id AS RackLocationId, batch_number AS BatchNumber,
-                   expiry_date AS ExpiryDate, is_active AS IsActive, created_at_utc AS CreatedAtUtc
+                   category_name AS CategoryName, unit, purchase_price AS PurchasePrice,
+                   selling_price AS SellingPrice, mrp AS MRP, gst_rate AS GSTRate,
+                   cess_rate AS CessRate, current_stock AS CurrentStock, min_stock_alert AS MinStockAlert,
+                   rack_location_id AS RackLocationId, rack_location AS RackLocation,
+                   batch_number AS BatchNumber, expiry_date AS ExpiryDate, is_active AS IsActive,
+                   created_at_utc AS CreatedAtUtc
             FROM products
             WHERE is_active = TRUE
             ORDER BY name;";
@@ -303,11 +306,12 @@ public class PostgresProductRepository : IProductRepository
         using var conn = _factory.CreateConnection();
         const string sql = @"
             SELECT id, name, sku, barcode, hsn_code AS HSNCode, category_id AS CategoryId,
-                   unit, purchase_price AS PurchasePrice, selling_price AS SellingPrice,
-                   mrp AS MRP, gst_rate AS GSTRate, cess_rate AS CessRate,
-                   current_stock AS CurrentStock, min_stock_alert AS MinStockAlert,
-                   rack_location_id AS RackLocationId, batch_number AS BatchNumber,
-                   expiry_date AS ExpiryDate, is_active AS IsActive, created_at_utc AS CreatedAtUtc
+                   category_name AS CategoryName, unit, purchase_price AS PurchasePrice,
+                   selling_price AS SellingPrice, mrp AS MRP, gst_rate AS GSTRate,
+                   cess_rate AS CessRate, current_stock AS CurrentStock, min_stock_alert AS MinStockAlert,
+                   rack_location_id AS RackLocationId, rack_location AS RackLocation,
+                   batch_number AS BatchNumber, expiry_date AS ExpiryDate, is_active AS IsActive,
+                   created_at_utc AS CreatedAtUtc
             FROM products
             WHERE is_active = TRUE AND current_stock <= min_stock_alert
             ORDER BY current_stock ASC;";
@@ -319,22 +323,26 @@ public class PostgresProductRepository : IProductRepository
         using var conn = _factory.CreateConnection();
         const string sql = @"
             INSERT INTO products (
-                id, name, sku, barcode, hsn_code, category_id, unit, purchase_price,
+                id, name, sku, barcode, hsn_code, category_id, category_name, unit, purchase_price,
                 selling_price, mrp, gst_rate, cess_rate, current_stock, min_stock_alert,
-                rack_location_id, batch_number, expiry_date, is_active, created_at_utc
+                rack_location_id, rack_location, batch_number, expiry_date, is_active, created_at_utc
             ) VALUES (
-                @Id, @Name, @SKU, @Barcode, @HSNCode, @CategoryId, @Unit, @PurchasePrice,
+                @Id, @Name, @SKU, @Barcode, @HSNCode, @CategoryId, @CategoryName, @Unit, @PurchasePrice,
                 @SellingPrice, @MRP, @GSTRate, @CessRate, @CurrentStock, @MinStockAlert,
-                @RackLocationId, @BatchNumber, @ExpiryDate, @IsActive, @CreatedAtUtc
+                @RackLocationId, @RackLocation, @BatchNumber, @ExpiryDate, @IsActive, @CreatedAtUtc
             )
             ON CONFLICT (sku) DO UPDATE SET
                 name = EXCLUDED.name,
                 barcode = EXCLUDED.barcode,
                 hsn_code = EXCLUDED.hsn_code,
+                category_name = EXCLUDED.category_name,
                 selling_price = EXCLUDED.selling_price,
                 mrp = EXCLUDED.mrp,
                 gst_rate = EXCLUDED.gst_rate,
-                current_stock = EXCLUDED.current_stock;";
+                current_stock = EXCLUDED.current_stock,
+                rack_location = EXCLUDED.rack_location,
+                batch_number = EXCLUDED.batch_number,
+                expiry_date = EXCLUDED.expiry_date;";
         int rows = await conn.ExecuteAsync(sql, product);
         return rows > 0;
     }
@@ -347,6 +355,10 @@ public class PostgresProductRepository : IProductRepository
                 name = @Name,
                 barcode = @Barcode,
                 hsn_code = @HSNCode,
+                category_name = @CategoryName,
+                rack_location = @RackLocation,
+                batch_number = @BatchNumber,
+                expiry_date = @ExpiryDate,
                 selling_price = @SellingPrice,
                 mrp = @MRP,
                 gst_rate = @GSTRate,
