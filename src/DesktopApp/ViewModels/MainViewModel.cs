@@ -21,6 +21,24 @@ using Security.Services;
 
 namespace DesktopApp.ViewModels;
 
+public class StringEqualsToBoolConverter : System.Windows.Data.IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
+    {
+        if (value == null || parameter == null) return false;
+        return string.Equals(value.ToString(), parameter.ToString(), StringComparison.OrdinalIgnoreCase);
+    }
+
+    public object ConvertBack(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
+    {
+        if (value is bool b && b && parameter != null)
+        {
+            return parameter.ToString()!;
+        }
+        return System.Windows.Data.Binding.DoNothing;
+    }
+}
+
 public static class CurrencyWordsHelper
 {
     private static readonly string[] Ones = { "", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen" };
@@ -173,6 +191,18 @@ public partial class MainViewModel : ObservableObject
     // Navigation Tabs in Main Dashboard: "Dashboard", "Billing", "Inventory", "Pharmacy", "Reports", "Users", "CaExport"
     [ObservableProperty]
     private string currentDashboardTab = "Dashboard";
+
+    partial void OnCurrentDashboardTabChanged(string value)
+    {
+        if (value == "Reports")
+        {
+            GenerateGstReport();
+        }
+        else if (value == "CaExport")
+        {
+            _ = UpdateCaExportPeriodPreviewAsync();
+        }
+    }
 
     // --- Onboarding Lock State Properties ---
     [ObservableProperty]
@@ -362,6 +392,14 @@ public partial class MainViewModel : ObservableObject
     // --- Billing Sub-Tabs (New Sale vs Previous Invoices History) ---
     [ObservableProperty]
     private string billingSubTab = "NewSale";
+
+    partial void OnBillingSubTabChanged(string value)
+    {
+        if (value == "History")
+        {
+            RefreshFilteredInvoices();
+        }
+    }
 
     [ObservableProperty]
     private string invoiceSearchQuery = string.Empty;

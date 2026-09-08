@@ -36,6 +36,7 @@
 
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+        <vm:StringEqualsToBoolConverter x:Key="StringEqualsConverter"/>
     </Window.Resources>
 
     <Grid>
@@ -227,12 +228,12 @@
 
                     <!-- Main Navigation Tabs -->
                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                        <RadioButton GroupName="MainDashboardTabs" Content="🏠 Dashboard" Style="{StaticResource ModernNavRadioButton}" IsChecked="True" Command="{Binding SwitchTabCommand}" CommandParameter="Dashboard"/>
-                        <RadioButton GroupName="MainDashboardTabs" Content="🛒 POS Billing" Style="{StaticResource ModernNavRadioButton}" Command="{Binding SwitchTabCommand}" CommandParameter="Billing"/>
-                        <RadioButton GroupName="MainDashboardTabs" Content="📦 Inventory" Style="{StaticResource ModernNavRadioButton}" Command="{Binding SwitchTabCommand}" CommandParameter="Inventory"/>
-                        <RadioButton GroupName="MainDashboardTabs" Content="💊 Pharmacy Batches" Style="{StaticResource ModernNavRadioButton}" Command="{Binding SwitchTabCommand}" CommandParameter="Pharmacy"/>
-                        <RadioButton GroupName="MainDashboardTabs" Content="👥 Users &amp; Roles" Style="{StaticResource ModernNavRadioButton}" Command="{Binding SwitchTabCommand}" CommandParameter="Users"/>
-                        <RadioButton GroupName="MainDashboardTabs" Content="🔐 CA Encrypted Export" Style="{StaticResource ModernNavRadioButton}" Visibility="{Binding CanAccessSuperAdminExport, Converter={StaticResource BoolToVis}}" Command="{Binding SwitchTabCommand}" CommandParameter="CaExport"/>
+                        <RadioButton GroupName="MainDashboardTabs" Content="🏠 Dashboard" Style="{StaticResource ModernNavRadioButton}" IsChecked="{Binding CurrentDashboardTab, Converter={StaticResource StringEqualsConverter}, ConverterParameter=Dashboard, Mode=TwoWay}" Command="{Binding SwitchTabCommand}" CommandParameter="Dashboard"/>
+                        <RadioButton GroupName="MainDashboardTabs" Content="🛒 POS Billing" Style="{StaticResource ModernNavRadioButton}" IsChecked="{Binding CurrentDashboardTab, Converter={StaticResource StringEqualsConverter}, ConverterParameter=Billing, Mode=TwoWay}" Command="{Binding SwitchTabCommand}" CommandParameter="Billing"/>
+                        <RadioButton GroupName="MainDashboardTabs" Content="📦 Inventory" Style="{StaticResource ModernNavRadioButton}" IsChecked="{Binding CurrentDashboardTab, Converter={StaticResource StringEqualsConverter}, ConverterParameter=Inventory, Mode=TwoWay}" Command="{Binding SwitchTabCommand}" CommandParameter="Inventory"/>
+                        <RadioButton GroupName="MainDashboardTabs" Content="💊 Pharmacy Batches" Style="{StaticResource ModernNavRadioButton}" IsChecked="{Binding CurrentDashboardTab, Converter={StaticResource StringEqualsConverter}, ConverterParameter=Pharmacy, Mode=TwoWay}" Command="{Binding SwitchTabCommand}" CommandParameter="Pharmacy"/>
+                        <RadioButton GroupName="MainDashboardTabs" Content="👥 Users &amp; Roles" Style="{StaticResource ModernNavRadioButton}" IsChecked="{Binding CurrentDashboardTab, Converter={StaticResource StringEqualsConverter}, ConverterParameter=Users, Mode=TwoWay}" Command="{Binding SwitchTabCommand}" CommandParameter="Users"/>
+                        <RadioButton GroupName="MainDashboardTabs" Content="🔐 CA Encrypted Export" Style="{StaticResource ModernNavRadioButton}" IsChecked="{Binding CurrentDashboardTab, Converter={StaticResource StringEqualsConverter}, ConverterParameter=CaExport, Mode=TwoWay}" Visibility="{Binding CanAccessSuperAdminExport, Converter={StaticResource BoolToVis}}" Command="{Binding SwitchTabCommand}" CommandParameter="CaExport"/>
                     </StackPanel>
 
                     <!-- Right User Info & Logout -->
@@ -487,8 +488,8 @@
                             </Grid.ColumnDefinitions>
 
                             <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                                <RadioButton GroupName="PosBillingSubTabs" Content="🛒 New POS Sale Terminal" Style="{StaticResource ModernNavRadioButton}" IsChecked="True" Command="{Binding SetBillingSubTabCommand}" CommandParameter="NewSale"/>
-                                <RadioButton GroupName="PosBillingSubTabs" Content="🧾 Previous Invoices &amp; History" Style="{StaticResource ModernNavRadioButton}" Margin="8,0,0,0" Command="{Binding SetBillingSubTabCommand}" CommandParameter="History"/>
+                                <RadioButton GroupName="PosBillingSubTabs" Content="🛒 New POS Sale Terminal" Style="{StaticResource ModernNavRadioButton}" IsChecked="{Binding BillingSubTab, Converter={StaticResource StringEqualsConverter}, ConverterParameter=NewSale, Mode=TwoWay}" Command="{Binding SetBillingSubTabCommand}" CommandParameter="NewSale"/>
+                                <RadioButton GroupName="PosBillingSubTabs" Content="🧾 Previous Invoices &amp; History" Style="{StaticResource ModernNavRadioButton}" Margin="8,0,0,0" IsChecked="{Binding BillingSubTab, Converter={StaticResource StringEqualsConverter}, ConverterParameter=History, Mode=TwoWay}" Command="{Binding SetBillingSubTabCommand}" CommandParameter="History"/>
                             </StackPanel>
 
                             <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
@@ -1659,6 +1660,103 @@
                 </Grid>
 
             </Grid>
+
+            <!-- Bottom Function Key Shortcut Ribbon (F1 - F12, ESC) -->
+            <Border Grid.Row="2" Background="#0F172A" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0" Padding="14,8">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <ScrollViewer Grid.Column="0" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <Button Style="{StaticResource PrimaryButton}" Background="#1E293B" Padding="8,4" Margin="0,0,6,0" Command="{Binding ShortcutF1PosCommand}" ToolTip="[F1] Switch to POS Billing Terminal">
+                                <StackPanel Orientation="Horizontal">
+                                    <Border Background="{StaticResource PrimaryBlueBrush}" CornerRadius="3" Padding="4,1" Margin="0,0,6,0"><TextBlock Text="F1" FontSize="11" FontWeight="Bold" Foreground="White"/></Border>
+                                    <TextBlock Text="POS Billing" FontSize="11" VerticalAlignment="Center" Foreground="{StaticResource TextPrimaryBrush}"/>
+                                </StackPanel>
+                            </Button>
+                            <Button Style="{StaticResource PrimaryButton}" Background="#1E293B" Padding="8,4" Margin="0,0,6,0" Command="{Binding ShortcutF2InventoryCommand}" ToolTip="[F2] Switch to Inventory Catalog">
+                                <StackPanel Orientation="Horizontal">
+                                    <Border Background="#475569" CornerRadius="3" Padding="4,1" Margin="0,0,6,0"><TextBlock Text="F2" FontSize="11" FontWeight="Bold" Foreground="White"/></Border>
+                                    <TextBlock Text="Inventory" FontSize="11" VerticalAlignment="Center" Foreground="{StaticResource TextPrimaryBrush}"/>
+                                </StackPanel>
+                            </Button>
+                            <Button Style="{StaticResource PrimaryButton}" Background="#1E293B" Padding="8,4" Margin="0,0,6,0" Command="{Binding ShortcutF3NewProductCommand}" ToolTip="[F3] Add New Inventory Item">
+                                <StackPanel Orientation="Horizontal">
+                                    <Border Background="#475569" CornerRadius="3" Padding="4,1" Margin="0,0,6,0"><TextBlock Text="F3" FontSize="11" FontWeight="Bold" Foreground="White"/></Border>
+                                    <TextBlock Text="New Item" FontSize="11" VerticalAlignment="Center" Foreground="{StaticResource TextPrimaryBrush}"/>
+                                </StackPanel>
+                            </Button>
+                            <Button Style="{StaticResource PrimaryButton}" Background="#1E293B" Padding="8,4" Margin="0,0,6,0" Command="{Binding ShortcutF4PayCommand}" ToolTip="[F4] Checkout &amp; Pay Bill">
+                                <StackPanel Orientation="Horizontal">
+                                    <Border Background="{StaticResource SuccessGreenBrush}" CornerRadius="3" Padding="4,1" Margin="0,0,6,0"><TextBlock Text="F4" FontSize="11" FontWeight="Bold" Foreground="White"/></Border>
+                                    <TextBlock Text="Pay Bill" FontSize="11" VerticalAlignment="Center" Foreground="{StaticResource TextPrimaryBrush}"/>
+                                </StackPanel>
+                            </Button>
+                            <Button Style="{StaticResource PrimaryButton}" Background="#1E293B" Padding="8,4" Margin="0,0,6,0" Command="{Binding ShortcutF5NewBillCommand}" ToolTip="[F5] Start Fresh POS Cart">
+                                <StackPanel Orientation="Horizontal">
+                                    <Border Background="#475569" CornerRadius="3" Padding="4,1" Margin="0,0,6,0"><TextBlock Text="F5" FontSize="11" FontWeight="Bold" Foreground="White"/></Border>
+                                    <TextBlock Text="New Bill" FontSize="11" VerticalAlignment="Center" Foreground="{StaticResource TextPrimaryBrush}"/>
+                                </StackPanel>
+                            </Button>
+                            <Button Style="{StaticResource PrimaryButton}" Background="#1E293B" Padding="8,4" Margin="0,0,6,0" Command="{Binding ShortcutF6PharmacyCommand}" ToolTip="[F6] Pharmacy Batches &amp; Expiry Monitor">
+                                <StackPanel Orientation="Horizontal">
+                                    <Border Background="#475569" CornerRadius="3" Padding="4,1" Margin="0,0,6,0"><TextBlock Text="F6" FontSize="11" FontWeight="Bold" Foreground="White"/></Border>
+                                    <TextBlock Text="Pharmacy" FontSize="11" VerticalAlignment="Center" Foreground="{StaticResource TextPrimaryBrush}"/>
+                                </StackPanel>
+                            </Button>
+                            <Button Style="{StaticResource PrimaryButton}" Background="#1E293B" Padding="8,4" Margin="0,0,6,0" Command="{Binding ShortcutF7DiscountCommand}" ToolTip="[F7] Toggle Discount (Flat ₹ / %)">
+                                <StackPanel Orientation="Horizontal">
+                                    <Border Background="#475569" CornerRadius="3" Padding="4,1" Margin="0,0,6,0"><TextBlock Text="F7" FontSize="11" FontWeight="Bold" Foreground="White"/></Border>
+                                    <TextBlock Text="Discount" FontSize="11" VerticalAlignment="Center" Foreground="{StaticResource TextPrimaryBrush}"/>
+                                </StackPanel>
+                            </Button>
+                            <Button Style="{StaticResource PrimaryButton}" Background="#1E293B" Padding="8,4" Margin="0,0,6,0" Command="{Binding ShortcutF8HistoryCommand}" ToolTip="[F8] View Invoice History Ledger">
+                                <StackPanel Orientation="Horizontal">
+                                    <Border Background="#475569" CornerRadius="3" Padding="4,1" Margin="0,0,6,0"><TextBlock Text="F8" FontSize="11" FontWeight="Bold" Foreground="White"/></Border>
+                                    <TextBlock Text="Sales Invoices" FontSize="11" VerticalAlignment="Center" Foreground="{StaticResource TextPrimaryBrush}"/>
+                                </StackPanel>
+                            </Button>
+                            <Button Style="{StaticResource PrimaryButton}" Background="#1E293B" Padding="8,4" Margin="0,0,6,0" Command="{Binding ShortcutF9ReprintCommand}" ToolTip="[F9 / Ctrl+P] Reprint Last Invoice">
+                                <StackPanel Orientation="Horizontal">
+                                    <Border Background="#475569" CornerRadius="3" Padding="4,1" Margin="0,0,6,0"><TextBlock Text="F9" FontSize="11" FontWeight="Bold" Foreground="White"/></Border>
+                                    <TextBlock Text="Reprint" FontSize="11" VerticalAlignment="Center" Foreground="{StaticResource TextPrimaryBrush}"/>
+                                </StackPanel>
+                            </Button>
+                            <Button Style="{StaticResource PrimaryButton}" Background="#1E293B" Padding="8,4" Margin="0,0,6,0" Command="{Binding ShortcutF10CategoriesCommand}" ToolTip="[F10] Categories &amp; Industry Templates">
+                                <StackPanel Orientation="Horizontal">
+                                    <Border Background="#475569" CornerRadius="3" Padding="4,1" Margin="0,0,6,0"><TextBlock Text="F10" FontSize="11" FontWeight="Bold" Foreground="White"/></Border>
+                                    <TextBlock Text="Categories" FontSize="11" VerticalAlignment="Center" Foreground="{StaticResource TextPrimaryBrush}"/>
+                                </StackPanel>
+                            </Button>
+                            <Button Style="{StaticResource PrimaryButton}" Background="#1E293B" Padding="8,4" Margin="0,0,6,0" Command="{Binding ShortcutF11HoldBillCommand}" ToolTip="[F11] Hold / Park Current Bill">
+                                <StackPanel Orientation="Horizontal">
+                                    <Border Background="#D97706" CornerRadius="3" Padding="4,1" Margin="0,0,6,0"><TextBlock Text="F11" FontSize="11" FontWeight="Bold" Foreground="White"/></Border>
+                                    <TextBlock Text="Hold Bill" FontSize="11" VerticalAlignment="Center" Foreground="{StaticResource TextPrimaryBrush}"/>
+                                </StackPanel>
+                            </Button>
+                            <Button Style="{StaticResource PrimaryButton}" Background="#1E293B" Padding="8,4" Margin="0,0,6,0" Command="{Binding ShortcutF12RecallBillCommand}" ToolTip="[F12] Recall Parked Bill">
+                                <StackPanel Orientation="Horizontal">
+                                    <Border Background="#0284C7" CornerRadius="3" Padding="4,1" Margin="0,0,6,0"><TextBlock Text="F12" FontSize="11" FontWeight="Bold" Foreground="White"/></Border>
+                                    <TextBlock Text="{Binding ParkedBillsCount, StringFormat='Recall ({0})'}" FontSize="11" VerticalAlignment="Center" Foreground="{StaticResource TextPrimaryBrush}"/>
+                                </StackPanel>
+                            </Button>
+                            <Button Style="{StaticResource PrimaryButton}" Background="#1E293B" Padding="8,4" Margin="0,0,0,0" Command="{Binding ShortcutEscapeCommand}" ToolTip="[Esc] Close Modals / Clear Dialogs">
+                                <StackPanel Orientation="Horizontal">
+                                    <Border Background="#EF4444" CornerRadius="3" Padding="4,1" Margin="0,0,6,0"><TextBlock Text="Esc" FontSize="11" FontWeight="Bold" Foreground="White"/></Border>
+                                    <TextBlock Text="Close / Back" FontSize="11" VerticalAlignment="Center" Foreground="{StaticResource TextPrimaryBrush}"/>
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+                    </ScrollViewer>
+
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="10,0,0,0">
+                        <TextBlock Text="⚡ Hotkeys Active" Foreground="{StaticResource AccentCyanBrush}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
         </Grid>
 
         <!-- ========================================================================= -->
