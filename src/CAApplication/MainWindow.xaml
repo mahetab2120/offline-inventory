@@ -310,19 +310,28 @@
                                 <Grid Margin="0,0,0,16">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="340"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="260"/>
                                     </Grid.ColumnDefinitions>
                                     <StackPanel Grid.Column="0">
                                         <TextBlock Text="🏢 Managed Client Businesses" Foreground="{StaticResource TextPrimaryBrush}" FontSize="18" FontWeight="Bold"/>
                                         <TextBlock Text="Live client store records, license validity countdown, and provisioning status" Foreground="{StaticResource TextSecondaryBrush}" FontSize="12" Margin="0,2,0,0"/>
                                     </StackPanel>
 
+                                    <!-- Status Filter Quick Buttons -->
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="0,0,14,0" VerticalAlignment="Center">
+                                        <Button Content="All" Style="{StaticResource PrimaryButton}" Height="36" Padding="12,0" FontSize="12" Margin="0,0,6,0" Command="{Binding SetStatusFilterCommand}" CommandParameter="All"/>
+                                        <Button Content="🟢 Active" Style="{StaticResource PrimaryButton}" Background="{StaticResource SurfaceCardBrush}" Height="36" Padding="12,0" FontSize="12" Margin="0,0,6,0" Command="{Binding SetStatusFilterCommand}" CommandParameter="Active"/>
+                                        <Button Content="🟡 Expiring Soon" Style="{StaticResource PrimaryButton}" Background="{StaticResource SurfaceCardBrush}" Height="36" Padding="12,0" FontSize="12" Margin="0,0,6,0" Command="{Binding SetStatusFilterCommand}" CommandParameter="ExpiringSoon"/>
+                                        <Button Content="⚪ Suspended" Style="{StaticResource PrimaryButton}" Background="{StaticResource SurfaceCardBrush}" Height="36" Padding="12,0" FontSize="12" Command="{Binding SetStatusFilterCommand}" CommandParameter="Suspended"/>
+                                    </StackPanel>
+
                                     <!-- Search Input -->
-                                    <TextBox Grid.Column="1" 
+                                    <TextBox Grid.Column="2" 
                                              Text="{Binding SearchQuery, UpdateSourceTrigger=PropertyChanged}" 
                                              Style="{StaticResource ModernTextBox}" 
-                                             Height="42" 
-                                             FontSize="14"
+                                             Height="38" 
+                                             FontSize="13"
                                              Padding="12,4"/>
                                 </Grid>
 
@@ -392,7 +401,8 @@
                                                     <!-- Quick Action Icon Toolbar -->
                                                     <StackPanel Grid.Column="7" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
                                                         <Button Content="📧 Email" Style="{StaticResource PrimaryButton}" Padding="8,4" FontSize="11" Margin="0,0,4,0" ToolTip="Draft &amp; Send Activation Email with .key Attachment" Command="{Binding DataContext.ResendClientEmailCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}"/>
-                                                        <Button Content="🔄 Plan/Renew" Style="{StaticResource SuccessButton}" Padding="8,4" FontSize="11" Margin="0,0,4,0" ToolTip="Update Subscription Plan &amp; Renew License" Command="{Binding DataContext.OpenSubscriptionModalCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}"/>
+                                                        <Button Content="🔄 Plan" Style="{StaticResource SuccessButton}" Padding="8,4" FontSize="11" Margin="0,0,4,0" ToolTip="Update Subscription Plan &amp; Renew License" Command="{Binding DataContext.OpenSubscriptionModalCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}"/>
+                                                        <Button Content="📜 .lic" Style="{StaticResource SuccessButton}" Background="#065F46" Padding="8,4" FontSize="11" Margin="0,0,4,0" ToolTip="Issue Signed Offline Renewal Certificate (.lic)" Command="{Binding DataContext.SelectClientForRenewalCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}"/>
                                                         <Button Content="🔑 Key" Style="{StaticResource PrimaryButton}" Background="{StaticResource SurfaceCardBrush}" Padding="8,4" FontSize="11" Margin="0,0,4,0" ToolTip="Re-export Encrypted Key &amp; Open Explorer" Command="{Binding DataContext.ReExportClientKeyCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}"/>
                                                         <Button Content="📋" Style="{StaticResource PrimaryButton}" Background="{StaticResource SurfaceCardBrush}" Padding="8,4" FontSize="11" ToolTip="Copy Store Account Credentials" Command="{Binding DataContext.CopyClientCredentialsCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}"/>
                                                     </StackPanel>
@@ -660,13 +670,23 @@
                             <Grid Margin="0,0,0,20">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="340"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="280"/>
                                 </Grid.ColumnDefinitions>
                                 <StackPanel Grid.Column="0">
                                     <TextBlock Text="Client Business Directory &amp; Records" Foreground="{StaticResource TextPrimaryBrush}" FontSize="22" FontWeight="Bold"/>
                                     <TextBlock Text="Full repository of registered offline business establishments" Foreground="{StaticResource TextSecondaryBrush}" FontSize="13" Margin="0,2,0,0"/>
                                 </StackPanel>
-                                <TextBox Grid.Column="1" Text="{Binding SearchQuery, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ModernTextBox}" Height="44" FontSize="14"/>
+
+                                <!-- Status Filter Quick Buttons -->
+                                <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="0,0,14,0" VerticalAlignment="Center">
+                                    <Button Content="All" Style="{StaticResource PrimaryButton}" Height="38" Padding="14,0" FontSize="12" Margin="0,0,6,0" Command="{Binding SetStatusFilterCommand}" CommandParameter="All"/>
+                                    <Button Content="🟢 Active" Style="{StaticResource PrimaryButton}" Background="{StaticResource SurfaceCardBrush}" Height="38" Padding="14,0" FontSize="12" Margin="0,0,6,0" Command="{Binding SetStatusFilterCommand}" CommandParameter="Active"/>
+                                    <Button Content="🟡 Expiring Soon" Style="{StaticResource PrimaryButton}" Background="{StaticResource SurfaceCardBrush}" Height="38" Padding="14,0" FontSize="12" Margin="0,0,6,0" Command="{Binding SetStatusFilterCommand}" CommandParameter="ExpiringSoon"/>
+                                    <Button Content="⚪ Suspended" Style="{StaticResource PrimaryButton}" Background="{StaticResource SurfaceCardBrush}" Height="38" Padding="14,0" FontSize="12" Command="{Binding SetStatusFilterCommand}" CommandParameter="Suspended"/>
+                                </StackPanel>
+
+                                <TextBox Grid.Column="2" Text="{Binding SearchQuery, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ModernTextBox}" Height="38" FontSize="13" Padding="12,4"/>
                             </Grid>
 
                             <ItemsControl ItemsSource="{Binding FilteredClients}">
@@ -775,11 +795,12 @@
 
                                                     <!-- Action Button Bar -->
                                                     <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right">
-                                                        <Button Content="📧 Draft / Resend Email" Style="{StaticResource PrimaryButton}" Height="36" FontSize="12" Padding="14,0" Margin="0,0,8,0" ToolTip="Prepare Activation Email with .key Attachment &amp; Open Mail Client" Command="{Binding DataContext.ResendClientEmailCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}"/>
-                                                        <Button Content="🔄 Update &amp; Renew Plan" Style="{StaticResource SuccessButton}" Height="36" FontSize="12" Padding="14,0" Margin="0,0,8,0" ToolTip="Select Plan Tier, Validity Period &amp; Update Database" Command="{Binding DataContext.OpenSubscriptionModalCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}"/>
-                                                        <Button Content="🔑 Re-Export Key" Style="{StaticResource PrimaryButton}" Background="{StaticResource SurfaceCardBrush}" Height="36" FontSize="12" Padding="12,0" Margin="0,0,8,0" ToolTip="Re-export Signed .key File and Reveal in Windows Explorer" Command="{Binding DataContext.ReExportClientKeyCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}"/>
-                                                        <Button Content="📋 Copy Details" Style="{StaticResource PrimaryButton}" Background="{StaticResource SurfaceCardBrush}" Height="36" FontSize="12" Padding="12,0" Margin="0,0,8,0" ToolTip="Copy Store Account Credentials to Clipboard" Command="{Binding DataContext.CopyClientCredentialsCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}"/>
-                                                        <Button Content="🚫 Suspend / Activate" Style="{StaticResource PrimaryButton}" Background="#334155" Height="36" FontSize="12" Padding="12,0" ToolTip="Toggle Account Active / Suspended Status" Command="{Binding DataContext.ToggleClientStatusCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}"/>
+                                                        <Button Content="📧 Email" Style="{StaticResource PrimaryButton}" Height="36" FontSize="12" Padding="12,0" Margin="0,0,6,0" ToolTip="Prepare Activation Email with .key Attachment &amp; Open Mail Client" Command="{Binding DataContext.ResendClientEmailCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}"/>
+                                                        <Button Content="🔄 Plan" Style="{StaticResource SuccessButton}" Height="36" FontSize="12" Padding="12,0" Margin="0,0,6,0" ToolTip="Select Plan Tier, Validity Period &amp; Update Database" Command="{Binding DataContext.OpenSubscriptionModalCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}"/>
+                                                        <Button Content="📜 Issue .lic" Style="{StaticResource SuccessButton}" Background="#065F46" Height="36" FontSize="12" Padding="12,0" Margin="0,0,6,0" ToolTip="Issue Signed Offline Renewal Certificate (.lic) for this client" Command="{Binding DataContext.SelectClientForRenewalCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}"/>
+                                                        <Button Content="🔑 Key" Style="{StaticResource PrimaryButton}" Background="{StaticResource SurfaceCardBrush}" Height="36" FontSize="12" Padding="10,0" Margin="0,0,6,0" ToolTip="Re-export Signed .key File and Reveal in Windows Explorer" Command="{Binding DataContext.ReExportClientKeyCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}"/>
+                                                        <Button Content="📋 Copy" Style="{StaticResource PrimaryButton}" Background="{StaticResource SurfaceCardBrush}" Height="36" FontSize="12" Padding="10,0" Margin="0,0,6,0" ToolTip="Copy Store Account Credentials to Clipboard" Command="{Binding DataContext.CopyClientCredentialsCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}"/>
+                                                        <Button Content="🚫 Suspend" Style="{StaticResource PrimaryButton}" Background="#334155" Height="36" FontSize="12" Padding="10,0" ToolTip="Toggle Account Active / Suspended Status" Command="{Binding DataContext.ToggleClientStatusCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}"/>
                                                     </StackPanel>
                                                 </Grid>
                                             </Grid>

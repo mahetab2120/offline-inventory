@@ -816,6 +816,25 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private bool isCaPackageExported = false;
 
+    // --- License Renewal Modal State ---
+    [ObservableProperty]
+    private bool isLicenseRenewalModalOpen = false;
+
+    [ObservableProperty]
+    private string selectedRenewalFilePath = string.Empty;
+
+    [ObservableProperty]
+    private string renewalValidationMessage = string.Empty;
+
+    [ObservableProperty]
+    private bool isValidRenewalLoaded = false;
+
+    [ObservableProperty]
+    private LicenseRenewalPayload? previewRenewalPayload;
+
+    [ObservableProperty]
+    private string renewalPreviewSummary = string.Empty;
+
     // --- Confirmation Modal State ---
     [ObservableProperty]
     private bool isConfirmModalOpen = false;
@@ -2940,6 +2959,201 @@ Export File Path:     {filePath}";
         catch
         {
             // Ignored
+        }
+    }
+
+    // =========================================================================
+    // LICENSE RENEWAL & SUPER ADMIN CERTIFICATE IMPORT (.lic / .key)
+    // =========================================================================
+
+    [RelayCommand]
+    private void OpenLicenseRenewalModal()
+    {
+        if (CurrentUser?.Role != UserRole.BusinessAdmin)
+        {
+            PosStatusMessage = "🔒 Access Denied: Only Business Admin can apply subscription license renewals.";
+            return;
+        }
+
+        SelectedRenewalFilePath = string.Empty;
+        RenewalValidationMessage = string.Empty;
+        IsValidRenewalLoaded = false;
+        PreviewRenewalPayload = null;
+        RenewalPreviewSummary = string.Empty;
+        IsLicenseRenewalModalOpen = true;
+    }
+
+    [RelayCommand]
+    private void CloseLicenseRenewalModal()
+    {
+        IsLicenseRenewalModalOpen = false;
+    }
+
+    [RelayCommand]
+    private void BrowseLicenseRenewalFile()
+    {
+        try
+        {
+            var dlg = new Microsoft.Win32.OpenFileDialog
+            {
+                Title = "Select AFS License Renewal Certificate (.lic) or Data Key (.key)",
+                Filter = "AFS License & Key Files (*.lic;*.key)|*.lic;*.key|License Certificates (*.lic)|*.lic|Provisioning Keys (*.key)|*.key|All Files (*.*)|*.*"
+            };
+
+            string candidateDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "GeneratedLicenses");
+            if (Directory.Exists(candidateDir))
+            {
+                dlg.InitialDirectory = candidateDir;
+            }
+
+            if (dlg.ShowDialog() == true)
+            {
+                SelectedRenewalFilePath = dlg.FileName;
+                ValidateRenewalFile(dlg.FileName);
+            }
+        }
+        catch (Exception ex)
+        {
+            RenewalValidationMessage = $"File selection error: {ex.Message}";
+        }
+    }
+
+    private void ValidateRenewalFile(string filePath)
+    {
+        try
+        {
+            string content = File.ReadAllText(filePath).Trim();
+            string ext = Path.GetExtension(filePath).ToLowerInvariant();
+
+            if (ext == ".lic" || content.StartsWith("{") || !content.Contains("AFS-COMMERCIAL-DATA-KEY-V1"))
+            {
+                // Try validating as .lic certificate
+                var (success, error, payload) = _keyService.ValidateLicenseRenewal(content, SecurityConstants.MasterCaPublicKeyPem);
+                if (success && payload != null)
+                {
+                    if (CurrentCompany != null && !payload.BusinessCode.Equals(CurrentCompany.BusinessCode, StringComparison.OrdinalIgnoreCase))
+                    {
+                        IsValidRenewalLoaded = false;
+                        RenewalValidationMessage = $"⚠️ Warning: License business code '{payload.BusinessCode}' does not match active store '{CurrentCompany.BusinessCode}'.";
+                        return;
+                    }
+
+                    PreviewRenewalPayload = payload;
+                    IsValidRenewalLoaded = true;
+                    RenewalValidationMessage = "✅ Cryptographically verified RSA-4096 signature from AFS Super Admin!";
+                    int days = Math.Max(0, (int)(payload.ExpiryDateUtc.Date - DateTime.UtcNow.Date).TotalDays);
+
+                    RenewalPreviewSummary = 
+$@"=== VERIFIED LICENSE RENEWAL CERTIFICATE ===
+Business Code:       {payload.BusinessCode}
+Subscription Tier:   {payload.Plan} Plan
+Issued Date (UTC):   {payload.IssuedDateUtc:dd-MMM-yyyy HH:mm}
+Expiry Date (UTC):   {payload.ExpiryDateUtc:dd-MMM-yyyy HH:mm} ({days} Days Remaining)
+Max Users Allowed:   {payload.MaxUsers} Users
+Max Products:        {payload.MaxProducts} SKUs
+Signature Status:    Verified Authentic with AFS Master CA RSA Key";
+                    return;
+                }
+            }
+
+            // Otherwise try validating as .key file
+            var (kSuccess, kError, kPayload) = _keyService.UnpackAndValidateDataKey(content, SecurityConstants.MasterCaPublicKeyPem);
+            if (kSuccess && kPayload != null)
+            {
+                if (CurrentCompany != null && !kPayload.BusinessCode.Equals(CurrentCompany.BusinessCode, StringComparison.OrdinalIgnoreCase))
+                {
+                    IsValidRenewalLoaded = false;
+                    RenewalValidationMessage = $"⚠️ Warning: Key business code '{kPayload.BusinessCode}' does not match active store '{CurrentCompany.BusinessCode}'.";
+                    return;
+                }
+
+                PreviewRenewalPayload = new LicenseRenewalPayload
+                {
+                    LicenseId = Guid.NewGuid().ToString("N"),
+                    BusinessCode = kPayload.BusinessCode,
+                    Plan = kPayload.SubscriptionPlan,
+                    IssuedDateUtc = kPayload.IssuedDateUtc,
+                    ExpiryDateUtc = kPayload.ExpiryDateUtc,
+                    GracePeriodDays = kPayload.GracePeriodDays,
+                    MaxUsers = kPayload.MaxUsers,
+                    MaxProducts = kPayload.MaxProducts,
+                    EnabledModules = kPayload.EnabledModules
+                };
+
+                IsValidRenewalLoaded = true;
+                RenewalValidationMessage = "✅ Cryptographically verified RSA-4096 Data Key from AFS Super Admin!";
+                int days = Math.Max(0, (int)(kPayload.ExpiryDateUtc.Date - DateTime.UtcNow.Date).TotalDays);
+
+                RenewalPreviewSummary = 
+$@"=== VERIFIED PROVISIONING DATA KEY RENEWAL ===
+Business Code:       {kPayload.BusinessCode}
+Legal Entity:        {kPayload.LegalName}
+Subscription Tier:   {kPayload.SubscriptionPlan} Plan
+Expiry Date (UTC):   {kPayload.ExpiryDateUtc:dd-MMM-yyyy HH:mm} ({days} Days Remaining)
+Max Users Allowed:   {kPayload.MaxUsers} Users
+Max Products:        {kPayload.MaxProducts} SKUs
+Signature Status:    Verified Authentic with AFS Master CA RSA Key";
+                return;
+            }
+
+            IsValidRenewalLoaded = false;
+            RenewalValidationMessage = "❌ Invalid license certificate or signature verification failed.";
+        }
+        catch (Exception ex)
+        {
+            IsValidRenewalLoaded = false;
+            RenewalValidationMessage = $"Validation error: {ex.Message}";
+        }
+    }
+
+    [RelayCommand]
+    private async Task ApplyLicenseRenewalAsync()
+    {
+        if (PreviewRenewalPayload == null || !IsValidRenewalLoaded) return;
+
+        try
+        {
+            var p = PreviewRenewalPayload;
+            var record = new LicenseRecord
+            {
+                Id = Guid.NewGuid(),
+                BusinessCode = p.BusinessCode,
+                LicenseKey = p.LicenseId,
+                Plan = p.Plan,
+                IssuedDateUtc = p.IssuedDateUtc,
+                ExpiryDateUtc = p.ExpiryDateUtc,
+                GracePeriodDays = p.GracePeriodDays,
+                MaxUsers = p.MaxUsers,
+                MaxProducts = p.MaxProducts,
+                Status = LicenseStatus.Active,
+                Signature = p.Signature,
+                LastVerifiedUtc = DateTime.UtcNow
+            };
+
+            await _licenseRepo.SaveLicenseAsync(record);
+
+            await _auditRepo.LogAsync(new AuditLog
+            {
+                UserId = CurrentUser?.Id,
+                Username = CurrentUser?.Username ?? "admin",
+                MachineName = Environment.MachineName,
+                Module = "LICENSE_MANAGEMENT",
+                Action = AuditActionType.LicenseRenewed,
+                RecordId = p.BusinessCode,
+                NewValue = $"License renewed to {p.Plan} tier until {p.ExpiryDateUtc:dd-MMM-yyyy}",
+                Reason = "Applied Super Admin RSA-signed license renewal certificate"
+            });
+
+            CurrentLicense = record;
+            int days = Math.Max(0, (int)(record.ExpiryDateUtc.Date - DateTime.UtcNow.Date).TotalDays);
+            LicenseDaysRemainingText = $"{record.Plan} Tier • {days} Days Remaining ({record.Status})";
+
+            IsLicenseRenewalModalOpen = false;
+            PosStatusMessage = $"✅ Subscription successfully updated to {record.Plan} Tier! Valid until {record.ExpiryDateUtc:dd-MMM-yyyy}.";
+        }
+        catch (Exception ex)
+        {
+            RenewalValidationMessage = $"Failed to save license to database: {ex.Message}";
         }
     }
 }

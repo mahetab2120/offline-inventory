@@ -198,6 +198,9 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private string searchQuery = string.Empty;
 
+    [ObservableProperty]
+    private string selectedStatusFilter = "All"; // All, Active, ExpiringSoon, Suspended
+
     // KPIs
     [ObservableProperty]
     private int totalClients = 0;
@@ -781,22 +784,47 @@ public partial class MainViewModel : ObservableObject
         RefreshFilteredClients();
     }
 
+    partial void OnSelectedStatusFilterChanged(string value)
+    {
+        RefreshFilteredClients();
+    }
+
+    [RelayCommand]
+    private void SetStatusFilter(string filter)
+    {
+        SelectedStatusFilter = filter;
+    }
+
     private void RefreshFilteredClients()
     {
         FilteredClients.Clear();
         var q = SearchQuery?.Trim().ToLowerInvariant() ?? string.Empty;
 
-        var matches = string.IsNullOrEmpty(q)
-            ? AllClients
-            : AllClients.Where(c => 
-                c.LegalName.ToLowerInvariant().Contains(q) ||
-                c.TradeName.ToLowerInvariant().Contains(q) ||
-                c.BusinessCode.ToLowerInvariant().Contains(q) ||
-                c.GSTIN.ToLowerInvariant().Contains(q) ||
-                c.ContactEmail.ToLowerInvariant().Contains(q) ||
-                c.ContactPhone.ToLowerInvariant().Contains(q) ||
-                c.BusinessType.ToString().ToLowerInvariant().Contains(q) ||
-                c.SubscriptionPlan.ToString().ToLowerInvariant().Contains(q));
+        var matches = AllClients.Where(c =>
+        {
+            // Status filter
+            if (SelectedStatusFilter == "Active" && (c.IsSuspended || c.DaysRemaining <= 7))
+                return false;
+            if (SelectedStatusFilter == "ExpiringSoon" && (c.IsSuspended || c.DaysRemaining is <= 0 or > 7))
+                return false;
+            if (SelectedStatusFilter == "Suspended" && !c.IsSuspended)
+                return false;
+            if (SelectedStatusFilter == "GracePeriod" && (c.IsSuspended || c.DaysRemaining > 0))
+                return false;
+
+            // Search query filter
+            if (string.IsNullOrEmpty(q))
+                return true;
+
+            return c.LegalName.ToLowerInvariant().Contains(q) ||
+                   c.TradeName.ToLowerInvariant().Contains(q) ||
+                   c.BusinessCode.ToLowerInvariant().Contains(q) ||
+                   c.GSTIN.ToLowerInvariant().Contains(q) ||
+                   c.ContactEmail.ToLowerInvariant().Contains(q) ||
+                   c.ContactPhone.ToLowerInvariant().Contains(q) ||
+                   c.BusinessType.ToString().ToLowerInvariant().Contains(q) ||
+                   c.SubscriptionPlan.ToString().ToLowerInvariant().Contains(q);
+        });
 
         foreach (var client in matches)
         {

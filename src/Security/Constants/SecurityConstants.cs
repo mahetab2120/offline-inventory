@@ -15,6 +15,8 @@ q5FM+fByCLZ8BtYSTIex0AM7vGULg8vwocngs/cUErLC6jzO/44qjHo1VSVZfIq+
 WQIDAQAB
 -----END PUBLIC KEY-----";
 
+    public const string MasterCaPublicKeyPem = EmbeddedCaPublicKeyPem;
+
     // Master AFS Private Key used by AFS Super Admin Portal to sign and issue keys
     public const string MasterCaPrivateKeyPem = 
 @"-----BEGIN PRIVATE KEY-----
