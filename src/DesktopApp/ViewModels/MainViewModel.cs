@@ -336,9 +336,36 @@ public partial class MainViewModel : ObservableObject
 
     public bool CanAccessSuperAdminExport => CurrentUser?.Role == UserRole.BusinessAdmin;
 
+    public bool CanAccessPharmacy => CurrentCompany?.BusinessType == BusinessType.Pharmacy;
+
+    public bool IsPharmacyLicensed => CurrentCompany?.BusinessType == BusinessType.Pharmacy;
+
+    public string LicensedBusinessTypeDisplay => CurrentCompany?.BusinessType switch
+    {
+        BusinessType.Supermarket => "🛒 Supermarket",
+        BusinessType.Pharmacy => "💊 Pharmacy",
+        BusinessType.Wholesale => "📦 Wholesale",
+        BusinessType.MegaMall => "🏬 Mega Mall",
+        BusinessType.Manufacturing => "🏭 Manufacturing",
+        BusinessType.GeneralStore => "🏪 General Store",
+        BusinessType.Retail => "🛍️ Retail Store",
+        _ => CurrentCompany?.BusinessType.ToString() ?? "Retail"
+    };
+
     public bool IsSuperAdmin => false;
 
     public string SuperAdminBadgeText => "🏢 Business Admin";
+
+    partial void OnCurrentCompanyChanged(Company? value)
+    {
+        OnPropertyChanged(nameof(CanAccessPharmacy));
+        OnPropertyChanged(nameof(IsPharmacyLicensed));
+        OnPropertyChanged(nameof(LicensedBusinessTypeDisplay));
+        if (value != null && MasterCategoryList.Count <= 1)
+        {
+            SeedDefaultCategoriesForBusinessType(value.BusinessType);
+        }
+    }
 
     partial void OnCurrentUserChanged(User? value)
     {
@@ -346,6 +373,9 @@ public partial class MainViewModel : ObservableObject
         OnPropertyChanged(nameof(DiscountPermissionStatusText));
         OnPropertyChanged(nameof(CanAccessGstReports));
         OnPropertyChanged(nameof(CanAccessSuperAdminExport));
+        OnPropertyChanged(nameof(CanAccessPharmacy));
+        OnPropertyChanged(nameof(IsPharmacyLicensed));
+        OnPropertyChanged(nameof(LicensedBusinessTypeDisplay));
         OnPropertyChanged(nameof(IsSuperAdmin));
         OnPropertyChanged(nameof(SuperAdminBadgeText));
         RecalculateCartTotals();
@@ -1204,6 +1234,11 @@ Modules Enabled:  {string.Join(", ", payload.EnabledModules)}";
             if (tabName == "CaExport" && !CanAccessSuperAdminExport)
             {
                 PosStatusMessage = "🔒 Access Denied: Encrypted Data Export is restricted exclusively to Business Admin.";
+                return;
+            }
+            if (tabName == "Pharmacy" && !CanAccessPharmacy)
+            {
+                PosStatusMessage = "🔒 Access Denied: Pharmacy Batches module requires a Pharmacy license from Super Admin.";
                 return;
             }
 
@@ -2249,26 +2284,12 @@ Modules Enabled:  {string.Join(", ", payload.EnabledModules)}";
         }
     }
 
-    [RelayCommand]
-    private void LoadIndustryPreset(string preset)
+    public void SeedDefaultCategoriesForBusinessType(BusinessType type)
     {
         MasterCategoryList.Clear();
-        switch (preset?.ToLowerInvariant())
+        switch (type)
         {
-            case "cafe":
-            case "restaurant":
-                MasterCategoryList.Add("☕ Hot Coffee & Teas");
-                MasterCategoryList.Add("🥤 Cold Brews & Shakes");
-                MasterCategoryList.Add("🥪 Gourmet Sandwiches & Wraps");
-                MasterCategoryList.Add("🍕 Artisan Pizzas & Pasta");
-                MasterCategoryList.Add("🍔 Burgers & Quick Bites");
-                MasterCategoryList.Add("🍰 Fresh Pastries & Desserts");
-                MasterCategoryList.Add("🥗 Fresh Salads & Bowls");
-                MasterCategoryList.Add("🍟 Fries & Finger Foods");
-                break;
-
-            case "pharmacy":
-            case "medical":
+            case BusinessType.Pharmacy:
                 MasterCategoryList.Add("💊 Tablets & Capsules");
                 MasterCategoryList.Add("🧪 Syrups & Suspensions");
                 MasterCategoryList.Add("💉 Injections & Vaccines");
@@ -2278,8 +2299,7 @@ Modules Enabled:  {string.Join(", ", payload.EnabledModules)}";
                 MasterCategoryList.Add("🌿 Ayurvedic & Herbal Care");
                 break;
 
-            case "grocery":
-            case "supermarket":
+            case BusinessType.Supermarket:
                 MasterCategoryList.Add("🌾 Grains, Flours & Pulses");
                 MasterCategoryList.Add("🧂 Spices, Masalas & Oils");
                 MasterCategoryList.Add("🍪 Biscuits, Namkeen & Snacks");
@@ -2287,37 +2307,54 @@ Modules Enabled:  {string.Join(", ", payload.EnabledModules)}";
                 MasterCategoryList.Add("🧼 Soaps, Cleaners & Detergents");
                 MasterCategoryList.Add("🧴 Shampoos & Grooming");
                 MasterCategoryList.Add("🥤 Soft Drinks & Juices");
+                MasterCategoryList.Add("🍫 Chocolates & Sweets");
                 break;
 
-            case "apparel":
-            case "garments":
-                MasterCategoryList.Add("👔 Men's Shirts & Trousers");
-                MasterCategoryList.Add("👗 Women's Ethnic & Western");
-                MasterCategoryList.Add("👶 Kids & Infants Wear");
-                MasterCategoryList.Add("👟 Footwear & Sports Shoes");
-                MasterCategoryList.Add("🎒 Bags, Belts & Wallets");
+            case BusinessType.Wholesale:
+                MasterCategoryList.Add("📦 Bulk Commodities & Grains");
+                MasterCategoryList.Add("🛢️ Edible Oils & Ghee Bulk");
+                MasterCategoryList.Add("📦 Packaged FMCG Cartons");
+                MasterCategoryList.Add("📦 Institutional Supplies");
+                MasterCategoryList.Add("🥤 Beverages Wholesale");
                 break;
 
-            case "electronics":
-            case "mobile":
-                MasterCategoryList.Add("📱 Smartphones & Tablets");
-                MasterCategoryList.Add("🎧 Bluetooth Audio & TWS");
-                MasterCategoryList.Add("🔌 Chargers & Data Cables");
-                MasterCategoryList.Add("🔋 Fast Power Banks");
-                MasterCategoryList.Add("💻 Laptop & PC Accessories");
-                MasterCategoryList.Add("📺 Home Appliances & TVs");
+            case BusinessType.MegaMall:
+                MasterCategoryList.Add("👔 Apparel & Garments");
+                MasterCategoryList.Add("📱 Electronics & Gadgets");
+                MasterCategoryList.Add("🧴 Beauty & Cosmetics");
+                MasterCategoryList.Add("🛒 FMCG & Groceries");
+                MasterCategoryList.Add("🏠 Home & Kitchen");
+                MasterCategoryList.Add("👟 Footwear & Accessories");
                 break;
 
+            case BusinessType.Manufacturing:
+                MasterCategoryList.Add("⚙️ Raw Materials");
+                MasterCategoryList.Add("🔧 Semi-Finished Components");
+                MasterCategoryList.Add("📦 Finished Goods");
+                MasterCategoryList.Add("🏷️ Packaging & Labels");
+                break;
+
+            case BusinessType.GeneralStore:
+            case BusinessType.Retail:
             default:
+                MasterCategoryList.Add("🛒 FMCG & Packaged Goods");
+                MasterCategoryList.Add("🧴 Toiletries & Personal Care");
+                MasterCategoryList.Add("🍪 Snacks & Beverages");
+                MasterCategoryList.Add("🧼 Household & Cleaning");
                 MasterCategoryList.Add("📦 General Store Items");
-                MasterCategoryList.Add("🧴 Personal Care");
-                MasterCategoryList.Add("🥤 Beverages & Drinks");
-                MasterCategoryList.Add("🍬 Sweets & Confectionery");
+                MasterCategoryList.Add("✏️ Stationery & Office");
                 break;
         }
 
         SynchronizeCategoryLists();
-        CategoryManagementMessage = $"✅ Switched to '{preset}' industry template with {MasterCategoryList.Count} categories!";
+    }
+
+    [RelayCommand]
+    private void ResetToLicensedCategories()
+    {
+        var bType = CurrentCompany?.BusinessType ?? BusinessType.Retail;
+        SeedDefaultCategoriesForBusinessType(bType);
+        CategoryManagementMessage = $"🔄 Reset category catalog to official defaults for licensed business type ({bType}).";
     }
 
     private void SynchronizeCategoryLists()
@@ -3208,6 +3245,7 @@ Export File Path:     {filePath}";
                     RenewalPreviewSummary = 
 $@"=== VERIFIED LICENSE RENEWAL CERTIFICATE ===
 Business Code:       {payload.BusinessCode}
+Classification:      {(payload.BusinessType.HasValue ? payload.BusinessType.Value.ToString() : (CurrentCompany?.BusinessType.ToString() ?? "Standard"))}
 Subscription Tier:   {payload.Plan} Plan
 Issued Date (UTC):   {payload.IssuedDateUtc:dd-MMM-yyyy HH:mm}
 Expiry Date (UTC):   {payload.ExpiryDateUtc:dd-MMM-yyyy HH:mm} ({days} Days Remaining)
@@ -3233,6 +3271,7 @@ Signature Status:    Verified Authentic with AFS Master CA RSA Key";
                 {
                     LicenseId = Guid.NewGuid().ToString("N"),
                     BusinessCode = kPayload.BusinessCode,
+                    BusinessType = kPayload.BusinessType,
                     Plan = kPayload.SubscriptionPlan,
                     IssuedDateUtc = kPayload.IssuedDateUtc,
                     ExpiryDateUtc = kPayload.ExpiryDateUtc,
@@ -3250,6 +3289,7 @@ Signature Status:    Verified Authentic with AFS Master CA RSA Key";
 $@"=== VERIFIED PROVISIONING DATA KEY RENEWAL ===
 Business Code:       {kPayload.BusinessCode}
 Legal Entity:        {kPayload.LegalName}
+Classification:      {kPayload.BusinessType}
 Subscription Tier:   {kPayload.SubscriptionPlan} Plan
 Expiry Date (UTC):   {kPayload.ExpiryDateUtc:dd-MMM-yyyy HH:mm} ({days} Days Remaining)
 Max Users Allowed:   {kPayload.MaxUsers} Users
@@ -3293,6 +3333,16 @@ Signature Status:    Verified Authentic with AFS Master CA RSA Key";
             };
 
             await _licenseRepo.SaveLicenseAsync(record);
+
+            if (p.BusinessType.HasValue && CurrentCompany != null && CurrentCompany.BusinessType != p.BusinessType.Value)
+            {
+                CurrentCompany.BusinessType = p.BusinessType.Value;
+                await _companyRepo.SaveCompanyAsync(CurrentCompany);
+                OnPropertyChanged(nameof(CanAccessPharmacy));
+                OnPropertyChanged(nameof(IsPharmacyLicensed));
+                OnPropertyChanged(nameof(LicensedBusinessTypeDisplay));
+                SeedDefaultCategoriesForBusinessType(p.BusinessType.Value);
+            }
 
             await _auditRepo.LogAsync(new AuditLog
             {
@@ -3367,6 +3417,11 @@ Signature Status:    Verified Authentic with AFS Master CA RSA Key";
     [RelayCommand]
     private void ShortcutF6Pharmacy()
     {
+        if (!CanAccessPharmacy)
+        {
+            PosStatusMessage = "🔒 Access Denied: Pharmacy module is restricted to businesses licensed as Pharmacy by Super Admin.";
+            return;
+        }
         SwitchTab("Pharmacy");
     }
 

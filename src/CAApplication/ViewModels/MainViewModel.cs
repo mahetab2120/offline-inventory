@@ -1748,6 +1748,7 @@ Key File:         Client_{client.BusinessCode}_DataKey.key";
             {
                 LicenseId = Guid.NewGuid().ToString("N"),
                 BusinessCode = client.BusinessCode,
+                BusinessType = client.BusinessType,
                 Plan = newPlan,
                 IssuedDateUtc = DateTime.UtcNow,
                 ExpiryDateUtc = newExpiry,

@@ -71,6 +71,7 @@ public class LicenseRenewalPayload
     public int MaxUsers { get; set; } = 5;
     public int MaxBranches { get; set; } = 1;
     public int MaxProducts { get; set; } = 10000;
+    public BusinessType? BusinessType { get; set; }
     public List<string> EnabledModules { get; set; } = new();
     public string Signature { get; set; } = string.Empty;
 }

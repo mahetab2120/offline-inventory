@@ -222,7 +222,11 @@
                         </Border>
                         <StackPanel VerticalAlignment="Center">
                             <TextBlock Text="{Binding CurrentCompany.TradeName, FallbackValue='AFS Business App'}" Foreground="{StaticResource TextPrimaryBrush}" FontSize="16" FontWeight="Bold"/>
-                            <TextBlock Text="{Binding CurrentCompany.BusinessCode}" Foreground="{StaticResource AccentCyanBrush}" FontSize="11" FontWeight="SemiBold"/>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="{Binding CurrentCompany.BusinessCode}" Foreground="{StaticResource AccentCyanBrush}" FontSize="11" FontWeight="SemiBold"/>
+                                <TextBlock Text=" • " Foreground="{StaticResource TextSecondaryBrush}" FontSize="11"/>
+                                <TextBlock Text="{Binding LicensedBusinessTypeDisplay}" Foreground="{StaticResource SuccessGreenBrush}" FontSize="11" FontWeight="SemiBold"/>
+                            </StackPanel>
                         </StackPanel>
                     </StackPanel>
 
@@ -231,7 +235,7 @@
                         <RadioButton GroupName="MainDashboardTabs" Content="🏠 Dashboard" Style="{StaticResource ModernNavRadioButton}" IsChecked="{Binding CurrentDashboardTab, Converter={StaticResource StringEqualsConverter}, ConverterParameter=Dashboard, Mode=TwoWay}" Command="{Binding SwitchTabCommand}" CommandParameter="Dashboard"/>
                         <RadioButton GroupName="MainDashboardTabs" Content="🛒 POS Billing" Style="{StaticResource ModernNavRadioButton}" IsChecked="{Binding CurrentDashboardTab, Converter={StaticResource StringEqualsConverter}, ConverterParameter=Billing, Mode=TwoWay}" Command="{Binding SwitchTabCommand}" CommandParameter="Billing"/>
                         <RadioButton GroupName="MainDashboardTabs" Content="📦 Inventory" Style="{StaticResource ModernNavRadioButton}" IsChecked="{Binding CurrentDashboardTab, Converter={StaticResource StringEqualsConverter}, ConverterParameter=Inventory, Mode=TwoWay}" Command="{Binding SwitchTabCommand}" CommandParameter="Inventory"/>
-                        <RadioButton GroupName="MainDashboardTabs" Content="💊 Pharmacy Batches" Style="{StaticResource ModernNavRadioButton}" IsChecked="{Binding CurrentDashboardTab, Converter={StaticResource StringEqualsConverter}, ConverterParameter=Pharmacy, Mode=TwoWay}" Command="{Binding SwitchTabCommand}" CommandParameter="Pharmacy"/>
+                        <RadioButton GroupName="MainDashboardTabs" Content="💊 Pharmacy Batches" Style="{StaticResource ModernNavRadioButton}" Visibility="{Binding CanAccessPharmacy, Converter={StaticResource BoolToVis}}" IsChecked="{Binding CurrentDashboardTab, Converter={StaticResource StringEqualsConverter}, ConverterParameter=Pharmacy, Mode=TwoWay}" Command="{Binding SwitchTabCommand}" CommandParameter="Pharmacy"/>
                         <RadioButton GroupName="MainDashboardTabs" Content="👥 Users &amp; Roles" Style="{StaticResource ModernNavRadioButton}" IsChecked="{Binding CurrentDashboardTab, Converter={StaticResource StringEqualsConverter}, ConverterParameter=Users, Mode=TwoWay}" Command="{Binding SwitchTabCommand}" CommandParameter="Users"/>
                         <RadioButton GroupName="MainDashboardTabs" Content="🔐 CA Encrypted Export" Style="{StaticResource ModernNavRadioButton}" IsChecked="{Binding CurrentDashboardTab, Converter={StaticResource StringEqualsConverter}, ConverterParameter=CaExport, Mode=TwoWay}" Visibility="{Binding CanAccessSuperAdminExport, Converter={StaticResource BoolToVis}}" Command="{Binding SwitchTabCommand}" CommandParameter="CaExport"/>
                     </StackPanel>
@@ -314,8 +318,8 @@
                                     </StackPanel>
                                 </Border>
 
-                                <!-- KPI 5: Pharmacy Expiring -->
-                                <Border Style="{StaticResource ModernCard}" Margin="4,0,4,0" Padding="14">
+                                <!-- KPI 5: Pharmacy Expiring (Pharmacy Licensed Only) -->
+                                <Border Style="{StaticResource ModernCard}" Margin="4,0,4,0" Padding="14" Visibility="{Binding CanAccessPharmacy, Converter={StaticResource BoolToVis}}">
                                     <StackPanel>
                                         <TextBlock Text="PHARMACY BATCHES" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" FontWeight="Bold"/>
                                         <TextBlock Text="{Binding PharmacyExpiredCount, StringFormat='{}{0} Expired'}" Foreground="{StaticResource DangerRedBrush}" FontSize="16" FontWeight="Bold" Margin="0,4,0,0"/>
@@ -425,8 +429,8 @@
                                     </StackPanel>
                                 </Border>
 
-                                <!-- Pharmacy Expiry Alert Grid -->
-                                <Border Grid.Column="2" Style="{StaticResource ModernCard}" Padding="18">
+                                <!-- Column 2A: Pharmacy Expiry Alert Grid (Pharmacy Licensed Only) -->
+                                <Border Grid.Column="2" Style="{StaticResource ModernCard}" Padding="18" Visibility="{Binding CanAccessPharmacy, Converter={StaticResource BoolToVis}}">
                                     <StackPanel>
                                         <TextBlock Text="💊 PHARMACY NEAR EXPIRY ALERTS (FEFO)" Foreground="{StaticResource DangerRedBrush}" FontSize="13" FontWeight="Bold" Margin="0,0,0,10"/>
                                         <ItemsControl ItemsSource="{Binding ExpiringBatchesSummary}">
@@ -445,6 +449,45 @@
                                                             <Border Grid.Column="1" Background="{Binding StatusBrush}" CornerRadius="4" Padding="8,3" VerticalAlignment="Center">
                                                                 <TextBlock Text="{Binding ExpiryBadge}" Foreground="White" FontSize="11" FontWeight="Bold"/>
                                                             </Border>
+                                                        </Grid>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- Column 2B: Recent Store Invoices (Non-Pharmacy / Supermarket / Retail) -->
+                                <Border Grid.Column="2" Padding="18">
+                                    <Border.Style>
+                                        <Style TargetType="Border" BasedOn="{StaticResource ModernCard}">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding CanAccessPharmacy}" Value="True">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
+                                    <StackPanel>
+                                        <Grid Margin="0,0,0,10">
+                                            <TextBlock Text="🧾 RECENT STORE SALES &amp; BILLS" Foreground="{StaticResource SuccessGreenBrush}" FontSize="13" FontWeight="Bold"/>
+                                            <Button Content="View Invoices (F8) →" Background="Transparent" Foreground="{StaticResource AccentCyanBrush}" BorderThickness="0" FontSize="11" FontWeight="Bold" HorizontalAlignment="Right" Command="{Binding ShortcutF8HistoryCommand}" Cursor="Hand"/>
+                                        </Grid>
+                                        <ItemsControl ItemsSource="{Binding RecentInvoices}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Border Background="#0F172A" CornerRadius="6" Padding="10" Margin="0,0,0,6">
+                                                        <Grid>
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="*"/>
+                                                                <ColumnDefinition Width="Auto"/>
+                                                            </Grid.ColumnDefinitions>
+                                                            <StackPanel Grid.Column="0">
+                                                                <TextBlock Text="{Binding CustomerName}" Foreground="{StaticResource TextPrimaryBrush}" FontSize="12" FontWeight="SemiBold"/>
+                                                                <TextBlock Text="{Binding InvoiceNumber, StringFormat='Inv #{0}'}" Foreground="{StaticResource TextSecondaryBrush}" FontSize="10"/>
+                                                            </StackPanel>
+                                                            <TextBlock Grid.Column="1" Text="{Binding GrandTotal, StringFormat='₹{0:N2}'}" Foreground="{StaticResource SuccessGreenBrush}" FontSize="12" FontWeight="Bold" VerticalAlignment="Center"/>
                                                         </Grid>
                                                     </Border>
                                                 </DataTemplate>
@@ -1701,7 +1744,7 @@
                                     <TextBlock Text="New Bill" FontSize="11" VerticalAlignment="Center" Foreground="{StaticResource TextPrimaryBrush}"/>
                                 </StackPanel>
                             </Button>
-                            <Button Style="{StaticResource PrimaryButton}" Background="#1E293B" Padding="8,4" Margin="0,0,6,0" Command="{Binding ShortcutF6PharmacyCommand}" ToolTip="[F6] Pharmacy Batches &amp; Expiry Monitor">
+                            <Button Style="{StaticResource PrimaryButton}" Background="#1E293B" Padding="8,4" Margin="0,0,6,0" Visibility="{Binding CanAccessPharmacy, Converter={StaticResource BoolToVis}}" Command="{Binding ShortcutF6PharmacyCommand}" ToolTip="[F6] Pharmacy Batches &amp; Expiry Monitor">
                                 <StackPanel Orientation="Horizontal">
                                     <Border Background="#475569" CornerRadius="3" Padding="4,1" Margin="0,0,6,0"><TextBlock Text="F6" FontSize="11" FontWeight="Bold" Foreground="White"/></Border>
                                     <TextBlock Text="Pharmacy" FontSize="11" VerticalAlignment="Center" Foreground="{StaticResource TextPrimaryBrush}"/>
@@ -1775,26 +1818,33 @@
                             <StackPanel Grid.Column="0">
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Text="📁 " FontSize="20" VerticalAlignment="Center"/>
-                                    <TextBlock Text="Product Categories &amp; Industry Templates" Foreground="{StaticResource TextPrimaryBrush}" FontSize="18" FontWeight="Bold" VerticalAlignment="Center"/>
+                                    <TextBlock Text="Product Categories Manager" Foreground="{StaticResource TextPrimaryBrush}" FontSize="18" FontWeight="Bold" VerticalAlignment="Center"/>
                                 </StackPanel>
-                                <TextBlock Text="Switch business presets (Cafe, Pharmacy, Grocery) or create custom categories. Instantly updates POS &amp; Inventory!" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" Margin="0,4,0,0"/>
+                                <TextBlock Text="Manage custom product categories for POS and Inventory. Store classification is provisioned exclusively by Super Admin." Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" Margin="0,4,0,0"/>
                             </StackPanel>
                             <Button Grid.Column="1" Content="✕" Background="Transparent" Foreground="{StaticResource TextSecondaryBrush}" FontSize="16" BorderThickness="0" Command="{Binding CloseManageCategoriesModalCommand}"/>
                         </Grid>
 
-                        <!-- Section 1: 1-Click Industry Templates -->
-                        <Border Background="#1E293B" CornerRadius="8" Padding="16" Margin="0,0,0,16" BorderBrush="#334155" BorderThickness="1">
-                            <StackPanel>
-                                <TextBlock Text="⚡ 1-CLICK INDUSTRY PRESETS &amp; TEMPLATES" Foreground="{StaticResource AccentCyanBrush}" FontSize="11" FontWeight="Bold" Margin="0,0,0,10"/>
-                                <UniformGrid Columns="3" Margin="0,0,0,4">
-                                    <Button Content="☕ Cafe &amp; Restaurant" Style="{StaticResource PrimaryButton}" Background="#0F172A" Foreground="#FDE047" Height="36" FontSize="11" FontWeight="Bold" Margin="0,0,6,6" Command="{Binding LoadIndustryPresetCommand}" CommandParameter="Cafe"/>
-                                    <Button Content="💊 Pharmacy &amp; Medical" Style="{StaticResource PrimaryButton}" Background="#0F172A" Foreground="#38BDF8" Height="36" FontSize="11" FontWeight="Bold" Margin="0,0,6,6" Command="{Binding LoadIndustryPresetCommand}" CommandParameter="Pharmacy"/>
-                                    <Button Content="🛒 Grocery &amp; Supermarket" Style="{StaticResource PrimaryButton}" Background="#0F172A" Foreground="#4ADE80" Height="36" FontSize="11" FontWeight="Bold" Margin="0,0,0,6" Command="{Binding LoadIndustryPresetCommand}" CommandParameter="Grocery"/>
-                                    <Button Content="👕 Apparel &amp; Fashion" Style="{StaticResource PrimaryButton}" Background="#0F172A" Foreground="#F472B6" Height="36" FontSize="11" FontWeight="Bold" Margin="0,0,6,0" Command="{Binding LoadIndustryPresetCommand}" CommandParameter="Apparel"/>
-                                    <Button Content="📱 Electronics &amp; Mobile" Style="{StaticResource PrimaryButton}" Background="#0F172A" Foreground="#A78BFA" Height="36" FontSize="11" FontWeight="Bold" Margin="0,0,6,0" Command="{Binding LoadIndustryPresetCommand}" CommandParameter="Electronics"/>
-                                    <Button Content="📦 General Retail Store" Style="{StaticResource PrimaryButton}" Background="#0F172A" Foreground="{StaticResource TextPrimaryBrush}" Height="36" FontSize="11" FontWeight="Bold" Command="{Binding LoadIndustryPresetCommand}" CommandParameter="General"/>
-                                </UniformGrid>
-                            </StackPanel>
+                        <!-- Section 1: Super Admin Licensed Business Classification -->
+                        <Border Background="#1E293B" CornerRadius="8" Padding="16" Margin="0,0,0,16" BorderBrush="{StaticResource AccentCyanBrush}" BorderThickness="1">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+
+                                <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                        <TextBlock Text="🏢 LICENSED BUSINESS CLASSIFICATION:" Foreground="{StaticResource AccentCyanBrush}" FontSize="11" FontWeight="Bold"/>
+                                        <Border Background="#0F172A" CornerRadius="4" Padding="6,2" Margin="8,0,0,0">
+                                            <TextBlock Text="{Binding LicensedBusinessTypeDisplay}" Foreground="{StaticResource SuccessGreenBrush}" FontSize="11" FontWeight="Bold"/>
+                                        </Border>
+                                    </StackPanel>
+                                    <TextBlock Text="🔒 Enforced by Super Admin RSA-4096 License Certificate. Store industry is locked to Super Admin license." Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" TextWrapping="Wrap"/>
+                                </StackPanel>
+
+                                <Button Grid.Column="1" Content="🔄 Reset to Licensed Defaults" Style="{StaticResource PrimaryButton}" Background="#334155" Height="36" Padding="14,0" FontSize="11" FontWeight="Bold" Command="{Binding ResetToLicensedCategoriesCommand}" ToolTip="Reset category catalog to default templates corresponding to your licensed business type" VerticalAlignment="Center"/>
+                            </Grid>
                         </Border>
 
                         <!-- Section 2: Create Custom Category -->
