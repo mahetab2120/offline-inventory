@@ -956,14 +956,16 @@
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="240"/>
+                                    <ColumnDefinition Width="190"/>
+                                    <ColumnDefinition Width="220"/>
                                 </Grid.ColumnDefinitions>
                                 <StackPanel Grid.Column="0">
                                     <TextBlock Text="Store Inventory &amp; Stock Catalog" Foreground="{StaticResource TextPrimaryBrush}" FontSize="20" FontWeight="Bold"/>
                                     <TextBlock Text="Full multi-tax product inventory with stock in/out controls" Foreground="{StaticResource TextSecondaryBrush}" FontSize="12"/>
                                 </StackPanel>
                                 <Button Grid.Column="1" Content="📁 Categories &amp; Cafe Templates" Style="{StaticResource PrimaryButton}" Background="#1E293B" Foreground="{StaticResource AccentCyanBrush}" Height="40" Padding="14,0" FontSize="12" FontWeight="Bold" Margin="0,0,12,0" Command="{Binding OpenManageCategoriesModalCommand}"/>
-                                <TextBox Grid.Column="2" Text="{Binding InventorySearchQuery, UpdateSourceTrigger=PropertyChanged}" Tag="🔍 Search product name, SKU, HSN..." Style="{StaticResource ModernTextBox}" Height="40" FontSize="13" ToolTip="Search products..."/>
+                                <ComboBox Grid.Column="2" ItemsSource="{Binding PosCategories}" SelectedItem="{Binding SelectedInventoryCategory}" Style="{StaticResource ModernComboBox}" Height="40" FontSize="12" Margin="0,0,12,0" ToolTip="Filter inventory by category"/>
+                                <TextBox Grid.Column="3" Text="{Binding InventorySearchQuery, UpdateSourceTrigger=PropertyChanged}" Tag="🔍 Search product name, SKU, HSN..." Style="{StaticResource ModernTextBox}" Height="40" FontSize="13" ToolTip="Search products..."/>
                             </Grid>
 
                             <!-- Product Table -->

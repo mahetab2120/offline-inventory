@@ -381,6 +381,9 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private string inventorySearchQuery = string.Empty;
 
+    [ObservableProperty]
+    private string selectedInventoryCategory = "🌟 All Categories";
+
     public ObservableCollection<Product> FilteredInventoryProducts { get; } = new();
 
     // Category Management & Industry Preset Modal State
@@ -1303,6 +1306,48 @@ Modules Enabled:  {string.Join(", ", payload.EnabledModules)}";
         SelectedPosCategory = category;
     }
 
+    private static string CleanCategoryName(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) return string.Empty;
+        string cleaned = Regex.Replace(raw, @"[\p{Cs}\p{So}\p{Sk}\p{Sm}]", "");
+        cleaned = cleaned.Replace("🌟", "").Replace("💊", "").Replace("🧪", "").Replace("💉", "")
+                         .Replace("🩹", "").Replace("🧴", "").Replace("🍼", "").Replace("🌿", "")
+                         .Replace("🌾", "").Replace("🧂", "").Replace("🍪", "").Replace("🥛", "")
+                         .Replace("🧼", "").Replace("🥤", "").Replace("👔", "").Replace("👗", "")
+                         .Replace("👶", "").Replace("👟", "").Replace("🎒", "").Replace("📱", "")
+                         .Replace("🎧", "").Replace("🔌", "").Replace("🔋", "").Replace("💻", "")
+                         .Replace("📺", "").Replace("☕", "").Replace("🥪", "").Replace("🍕", "")
+                         .Replace("🍔", "").Replace("🍰", "").Replace("🥗", "").Replace("🍟", "")
+                         .Replace("🍬", "").Replace("🛒", "").Replace("📦", "");
+        return cleaned.Trim().ToLowerInvariant();
+    }
+
+    private static bool IsCategoryMatch(string? productCategory, string? selectedCategory)
+    {
+        if (string.IsNullOrWhiteSpace(selectedCategory) || selectedCategory.Contains("All Categories"))
+            return true;
+
+        string cleanSelected = CleanCategoryName(selectedCategory);
+        string cleanProd = CleanCategoryName(productCategory);
+
+        if (string.IsNullOrWhiteSpace(cleanSelected))
+            return true;
+
+        if (string.IsNullOrWhiteSpace(cleanProd))
+            return false;
+
+        // Exact match
+        if (cleanProd.Equals(cleanSelected, StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        // Substring / containment match (e.g. "Tablets" matches "Tablets & Capsules")
+        if (cleanProd.Contains(cleanSelected, StringComparison.OrdinalIgnoreCase) ||
+            cleanSelected.Contains(cleanProd, StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        return false;
+    }
+
     private void RefreshFilteredPosProducts()
     {
         FilteredPosProducts.Clear();
@@ -1311,46 +1356,9 @@ Modules Enabled:  {string.Join(", ", payload.EnabledModules)}";
 
         var matches = AvailableProducts.Where(p =>
         {
-            // Category filter
-            if (cat != "🌟 All Categories" && !string.IsNullOrWhiteSpace(cat))
-            {
-                string cleanCat = cat.Replace("🌟", "").Replace("💊", "").Replace("🧪", "").Replace("🩹", "").Replace("🧴", "").Replace("🍼", "").Replace("🛒", "").Replace("📦", "").Trim().ToLowerInvariant();
-                string prodCat = (p.CategoryName ?? string.Empty).ToLowerInvariant();
-
-                if (!string.IsNullOrWhiteSpace(prodCat) && (prodCat.Contains(cleanCat) || cleanCat.Contains(prodCat)))
-                {
-                    // direct category match
-                }
-                else
-                {
-                    // Smart keyword fallback matching
-                    if (cleanCat.Contains("medicine") || cleanCat.Contains("tablet"))
-                    {
-                        if (!p.Name.ToLowerInvariant().Contains("tablet") && !p.Name.ToLowerInvariant().Contains("capsule") && !p.Name.ToLowerInvariant().Contains("paracetamol") && !p.Name.ToLowerInvariant().Contains("amoxicillin") && !p.Name.ToLowerInvariant().Contains("azithromycin") && !p.Name.ToLowerInvariant().Contains("cetirizine") && !p.Name.ToLowerInvariant().Contains("mg") && !p.HSNCode.StartsWith("3004"))
-                            return false;
-                    }
-                    else if (cleanCat.Contains("surgical"))
-                    {
-                        if (!p.Name.ToLowerInvariant().Contains("bandage") && !p.Name.ToLowerInvariant().Contains("cotton") && !p.Name.ToLowerInvariant().Contains("first aid") && !p.Name.ToLowerInvariant().Contains("dettol") && !p.Name.ToLowerInvariant().Contains("surgical"))
-                            return false;
-                    }
-                    else if (cleanCat.Contains("syrup") || cleanCat.Contains("liquid"))
-                    {
-                        if (!p.Name.ToLowerInvariant().Contains("syrup") && !p.Name.ToLowerInvariant().Contains("suspension") && !p.Name.ToLowerInvariant().Contains("cough") && !p.Name.ToLowerInvariant().Contains("tonic") && !p.Name.ToLowerInvariant().Contains("liquid") && !p.Name.ToLowerInvariant().Contains("ml"))
-                            return false;
-                    }
-                    else if (cleanCat.Contains("personal") || cleanCat.Contains("hygiene"))
-                    {
-                        if (!p.Name.ToLowerInvariant().Contains("soap") && !p.Name.ToLowerInvariant().Contains("shampoo") && !p.Name.ToLowerInvariant().Contains("paste") && !p.Name.ToLowerInvariant().Contains("sanitizer") && !p.Name.ToLowerInvariant().Contains("handwash"))
-                            return false;
-                    }
-                    else if (cleanCat.Contains("fmcg") || cleanCat.Contains("grocer"))
-                    {
-                        if (!p.Name.ToLowerInvariant().Contains("oil") && !p.Name.ToLowerInvariant().Contains("rice") && !p.Name.ToLowerInvariant().Contains("sugar") && !p.Name.ToLowerInvariant().Contains("tea") && !p.Name.ToLowerInvariant().Contains("biscuit") && !p.Name.ToLowerInvariant().Contains("snack"))
-                            return false;
-                    }
-                }
-            }
+            // Category filter: strictly match the product's assigned category
+            if (!IsCategoryMatch(p.CategoryName, cat))
+                return false;
 
             // Text search query filter
             if (!string.IsNullOrEmpty(q))
@@ -1904,18 +1912,33 @@ Modules Enabled:  {string.Join(", ", payload.EnabledModules)}";
         RefreshFilteredInventory();
     }
 
+    partial void OnSelectedInventoryCategoryChanged(string value)
+    {
+        RefreshFilteredInventory();
+    }
+
     private void RefreshFilteredInventory()
     {
         FilteredInventoryProducts.Clear();
         var q = InventorySearchQuery?.Trim().ToLowerInvariant() ?? string.Empty;
+        var cat = SelectedInventoryCategory;
 
-        var matches = string.IsNullOrEmpty(q)
-            ? AvailableProducts
-            : AvailableProducts.Where(p => 
-                p.Name.ToLowerInvariant().Contains(q) || 
-                p.SKU.ToLowerInvariant().Contains(q) || 
-                p.Barcode.ToLowerInvariant().Contains(q) ||
-                (p.BatchNumber != null && p.BatchNumber.ToLowerInvariant().Contains(q)));
+        var matches = AvailableProducts.Where(p =>
+        {
+            // Category filter
+            if (!IsCategoryMatch(p.CategoryName, cat))
+                return false;
+
+            // Search query filter
+            if (string.IsNullOrEmpty(q))
+                return true;
+
+            return p.Name.ToLowerInvariant().Contains(q) || 
+                   p.SKU.ToLowerInvariant().Contains(q) || 
+                   p.Barcode.ToLowerInvariant().Contains(q) ||
+                   (p.CategoryName != null && p.CategoryName.ToLowerInvariant().Contains(q)) ||
+                   (p.BatchNumber != null && p.BatchNumber.ToLowerInvariant().Contains(q));
+        });
 
         foreach (var p in matches)
         {
