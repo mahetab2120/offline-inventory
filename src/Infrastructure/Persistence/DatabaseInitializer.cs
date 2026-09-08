@@ -235,10 +235,34 @@ public class DatabaseInitializer
             total_amount NUMERIC(15, 2) NOT NULL DEFAULT 0
         );
 
+        CREATE TABLE IF NOT EXISTS decrypted_audit_packages (
+            id UUID PRIMARY KEY,
+            business_code VARCHAR(50) NOT NULL,
+            legal_name VARCHAR(255) NOT NULL,
+            gstin VARCHAR(50),
+            accounting_period VARCHAR(100) NOT NULL,
+            export_timestamp_utc TIMESTAMP WITH TIME ZONE NOT NULL,
+            decrypted_at_utc TIMESTAMP WITH TIME ZONE NOT NULL,
+            total_invoices INT NOT NULL DEFAULT 0,
+            total_revenue NUMERIC(15, 2) NOT NULL DEFAULT 0,
+            taxable_turnover NUMERIC(15, 2) NOT NULL DEFAULT 0,
+            total_cgst NUMERIC(15, 2) NOT NULL DEFAULT 0,
+            total_sgst NUMERIC(15, 2) NOT NULL DEFAULT 0,
+            total_igst NUMERIC(15, 2) NOT NULL DEFAULT 0,
+            total_tax NUMERIC(15, 2) NOT NULL DEFAULT 0,
+            total_products INT NOT NULL DEFAULT 0,
+            inventory_valuation NUMERIC(15, 2) NOT NULL DEFAULT 0,
+            audit_logs_count INT NOT NULL DEFAULT 0,
+            package_file_path TEXT,
+            raw_payload_json TEXT
+        );
+
         CREATE INDEX IF NOT EXISTS idx_products_barcode ON products(barcode);
         CREATE INDEX IF NOT EXISTS idx_products_sku ON products(sku);
         CREATE INDEX IF NOT EXISTS idx_audit_logs_timestamp ON audit_logs(timestamp_utc);
         CREATE INDEX IF NOT EXISTS idx_invoices_date ON invoices(invoice_date_utc);
+        CREATE INDEX IF NOT EXISTS idx_decrypted_audit_business ON decrypted_audit_packages(business_code);
+        CREATE INDEX IF NOT EXISTS idx_decrypted_audit_date ON decrypted_audit_packages(decrypted_at_utc);
         ";
 
         await conn.ExecuteAsync(schemaSql);

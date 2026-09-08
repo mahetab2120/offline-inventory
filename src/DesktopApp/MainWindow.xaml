@@ -157,9 +157,8 @@
                     <!-- Role Access Quick Hints -->
                     <Border Background="#0B0F17" CornerRadius="6" Padding="12,8" BorderBrush="#1E293B" BorderThickness="1">
                         <StackPanel>
-                            <TextBlock Text="💡 Role Access:" Foreground="{StaticResource AccentCyanBrush}" FontSize="11" FontWeight="Bold" Margin="0,0,0,3"/>
-                            <TextBlock Text="• Store Admin: admin (POS, Inventory, Pharmacy, Users)" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11"/>
-                            <TextBlock Text="• Super Admin / CA: superadmin (Password: SuperAdmin@2026!)" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11"/>
+                            <TextBlock Text="💡 Business Store Access:" Foreground="{StaticResource AccentCyanBrush}" FontSize="11" FontWeight="Bold" Margin="0,0,0,3"/>
+                            <TextBlock Text="• Sign in with your Business Admin or Staff credentials" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11"/>
                         </StackPanel>
                     </Border>
                 </StackPanel>
@@ -182,31 +181,26 @@
             </Grid.Style>
 
             <Grid.RowDefinitions>
-                <!-- Top App Header & Nav Tabs -->
-                <RowDefinition Height="68"/>
-                <!-- Main Workspace -->
+                <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
 
-            <!-- Top Header & Modern Navigation Bar -->
-            <Border Grid.Row="0" Background="{StaticResource SurfaceDarkBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1" Padding="20,0">
-                <Grid VerticalAlignment="Center">
+            <!-- Top Header & Navigation Bar -->
+            <Border Grid.Row="0" Background="#111827" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1" Padding="20,12">
+                <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
 
-                    <!-- Store Brand & Identity -->
-                    <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,24,0">
-                        <TextBlock Text="🏪 " FontSize="22" VerticalAlignment="Center"/>
+                    <!-- Left Brand Info -->
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,30,0">
+                        <Border Background="{StaticResource PrimaryBlueBrush}" Width="36" Height="36" CornerRadius="8" Margin="0,0,10,0">
+                            <TextBlock Text="📦" FontSize="18" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
                         <StackPanel VerticalAlignment="Center">
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="{Binding CurrentCompany.TradeName}" Foreground="{StaticResource TextPrimaryBrush}" FontSize="17" FontWeight="Bold"/>
-                                <Border Background="#064E3B" CornerRadius="4" Padding="6,2" Margin="8,0,0,0">
-                                    <TextBlock Text="{Binding CurrentCompany.BusinessType}" Foreground="#6EE7B7" FontSize="10" FontWeight="Bold"/>
-                                </Border>
-                            </StackPanel>
+                            <TextBlock Text="{Binding CurrentCompany.TradeName, FallbackValue='AFS Business App'}" Foreground="{StaticResource TextPrimaryBrush}" FontSize="16" FontWeight="Bold"/>
                             <TextBlock Text="{Binding CurrentCompany.BusinessCode}" Foreground="{StaticResource AccentCyanBrush}" FontSize="11" FontWeight="SemiBold"/>
                         </StackPanel>
                     </StackPanel>
@@ -217,9 +211,8 @@
                         <RadioButton GroupName="MainDashboardTabs" Content="🛒 POS Billing" Style="{StaticResource ModernNavRadioButton}" Command="{Binding SwitchTabCommand}" CommandParameter="Billing"/>
                         <RadioButton GroupName="MainDashboardTabs" Content="📦 Inventory" Style="{StaticResource ModernNavRadioButton}" Command="{Binding SwitchTabCommand}" CommandParameter="Inventory"/>
                         <RadioButton GroupName="MainDashboardTabs" Content="💊 Pharmacy Batches" Style="{StaticResource ModernNavRadioButton}" Command="{Binding SwitchTabCommand}" CommandParameter="Pharmacy"/>
-                        <RadioButton GroupName="MainDashboardTabs" Content="📊 GST Reports" Style="{StaticResource ModernNavRadioButton}" Visibility="{Binding CanAccessGstReports, Converter={StaticResource BoolToVis}}" Command="{Binding SwitchTabCommand}" CommandParameter="Reports"/>
                         <RadioButton GroupName="MainDashboardTabs" Content="👥 Users &amp; Roles" Style="{StaticResource ModernNavRadioButton}" Command="{Binding SwitchTabCommand}" CommandParameter="Users"/>
-                        <RadioButton GroupName="MainDashboardTabs" Content="🔐 Super Admin Export" Style="{StaticResource ModernNavRadioButton}" Visibility="{Binding CanAccessSuperAdminExport, Converter={StaticResource BoolToVis}}" Command="{Binding SwitchTabCommand}" CommandParameter="CaExport"/>
+                        <RadioButton GroupName="MainDashboardTabs" Content="🔐 CA Encrypted Export" Style="{StaticResource ModernNavRadioButton}" Visibility="{Binding CanAccessSuperAdminExport, Converter={StaticResource BoolToVis}}" Command="{Binding SwitchTabCommand}" CommandParameter="CaExport"/>
                     </StackPanel>
 
                     <!-- Right User Info & Logout -->
@@ -1512,12 +1505,12 @@
                                         </Border>
                                         <StackPanel VerticalAlignment="Center">
                                             <StackPanel Orientation="Horizontal">
-                                                <TextBlock Text="Super Admin Encrypted Data Export" Foreground="{StaticResource TextPrimaryBrush}" FontSize="22" FontWeight="Bold"/>
+                                                <TextBlock Text="Encrypted Data Export for Super Admin" Foreground="{StaticResource TextPrimaryBrush}" FontSize="22" FontWeight="Bold"/>
                                                 <Border Background="#064E3B" CornerRadius="4" Padding="8,2" Margin="10,0,0,0" VerticalAlignment="Center">
-                                                    <TextBlock Text="👑 SUPER ADMIN / CA ONLY" Foreground="#6EE7B7" FontSize="10" FontWeight="Bold"/>
+                                                    <TextBlock Text="👑 BUSINESS ADMIN ONLY" Foreground="#6EE7B7" FontSize="10" FontWeight="Bold"/>
                                                 </Border>
                                             </StackPanel>
-                                            <TextBlock Text="Generates military-grade AES-256-GCM encrypted commercial packages month &amp; year wise for CA statutory audit, tax filing, and data backup." Foreground="{StaticResource TextSecondaryBrush}" FontSize="12" Margin="0,2,0,0"/>
+                                            <TextBlock Text="Generates military-grade AES-256-GCM encrypted commercial packages month &amp; year wise to send to Super Admin / CA for statutory audit and tax reporting." Foreground="{StaticResource TextSecondaryBrush}" FontSize="12" Margin="0,2,0,0"/>
                                         </StackPanel>
                                     </StackPanel>
                                 </Grid>

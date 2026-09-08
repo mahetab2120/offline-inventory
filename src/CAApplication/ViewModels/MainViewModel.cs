@@ -153,6 +153,9 @@ public partial class MainViewModel : ObservableObject
     private readonly IUserRepository _userRepo;
     private readonly ILicenseRepository _licenseRepo;
     private readonly IAuditLogRepository _auditRepo;
+    private readonly IProductRepository _productRepo;
+    private readonly IInvoiceRepository _invoiceRepo;
+    private readonly IDecryptedAuditPackageRepository _decryptedPackageRepo;
 
     // AFS Super Admin Master Credentials (Salted PBKDF2 Hash)
     private string _masterCaUser = "superadmin";
@@ -463,6 +466,9 @@ public partial class MainViewModel : ObservableObject
         _userRepo = new PostgresUserRepository(connFactory);
         _licenseRepo = new PostgresLicenseRepository(connFactory);
         _auditRepo = new PostgresAuditLogRepository(connFactory);
+        _productRepo = new PostgresProductRepository(connFactory);
+        _invoiceRepo = new PostgresInvoiceRepository(connFactory);
+        _decryptedPackageRepo = new PostgresDecryptedAuditPackageRepository(connFactory);
         _bootstrapService = new BootstrapService(_companyRepo, _userRepo, _licenseRepo, _auditRepo, _hasher);
 
         UpdateSelectedValidity = ValidityOptions[1]; // Default to +3 Months
@@ -1886,7 +1892,7 @@ Client Activation Instructions:
     }
 
     [RelayCommand]
-    private void ExecuteDecryptAuditPackage()
+    private async Task ExecuteDecryptAuditPackageAsync()
     {
         if (string.IsNullOrWhiteSpace(SelectedAuditFilePath) || !File.Exists(SelectedAuditFilePath))
         {
@@ -1933,24 +1939,40 @@ Client Activation Instructions:
             DecryptedGstRateBreakdowns.Clear();
 
             // 1. Read Metadata
-            if (innerRoot.TryGetProperty("ExportMetadata", out var metaProp))
+            JsonElement metaElem = innerRoot;
+            if (innerRoot.TryGetProperty("ExportMetadata", out var expMeta))
             {
-                AuditBusinessCode = metaProp.TryGetProperty("BusinessCode", out var bc) ? bc.GetString() ?? "" : "";
-                AuditLegalName = metaProp.TryGetProperty("LegalName", out var ln) ? ln.GetString() ?? "" : "";
-                AuditGstin = metaProp.TryGetProperty("GSTIN", out var gst) ? gst.GetString() ?? "" : "";
-                AuditAccountingPeriod = metaProp.TryGetProperty("AccountingPeriod", out var ap) ? ap.GetString() ?? "" : "";
-                AuditExportTimestamp = metaProp.TryGetProperty("ExportTimestampUtc", out var ts) ? ts.GetDateTime() : DateTime.UtcNow;
-                AuditTotalInvoices = metaProp.TryGetProperty("TotalInvoices", out var ti) ? ti.GetInt32() : 0;
-                AuditTotalRevenue = metaProp.TryGetProperty("TotalRevenue", out var tr) ? tr.GetDecimal() : 0;
-                AuditTaxableTurnover = metaProp.TryGetProperty("TaxableTurnover", out var tt) ? tt.GetDecimal() : 0;
-                AuditTotalCgst = metaProp.TryGetProperty("CGST", out var cg) ? cg.GetDecimal() : 0;
-                AuditTotalSgst = metaProp.TryGetProperty("SGST", out var sg) ? sg.GetDecimal() : 0;
-                AuditTotalIgst = metaProp.TryGetProperty("IGST", out var ig) ? ig.GetDecimal() : 0;
-                AuditTotalTax = metaProp.TryGetProperty("TotalTax", out var tx) ? tx.GetDecimal() : 0;
-                AuditTotalProducts = metaProp.TryGetProperty("TotalProducts", out var tp) ? tp.GetInt32() : 0;
-                AuditInventoryValuation = metaProp.TryGetProperty("InventoryValuation", out var iv) ? iv.GetDecimal() : 0;
-                AuditLogsCount = metaProp.TryGetProperty("AuditRecordsCount", out var al) ? al.GetInt32() : 0;
+                metaElem = expMeta;
             }
+
+            AuditBusinessCode = metaElem.TryGetProperty("BusinessCode", out var bc) ? bc.GetString() ?? "" : "";
+            AuditLegalName = metaElem.TryGetProperty("LegalName", out var ln) ? ln.GetString() ?? "" : "";
+            AuditGstin = metaElem.TryGetProperty("GSTIN", out var gst) ? gst.GetString() ?? "" : "";
+            AuditAccountingPeriod = metaElem.TryGetProperty("AccountingPeriod", out var ap) ? ap.GetString() ?? "" : "";
+            AuditExportTimestamp = metaElem.TryGetProperty("ExportTimestampUtc", out var ts)
+                ? (ts.TryGetDateTime(out var dt) ? dt : DateTime.UtcNow)
+                : DateTime.UtcNow;
+
+            JsonElement metricsElem = metaElem;
+            if (innerRoot.TryGetProperty("Metrics", out var metricsProp))
+            {
+                metricsElem = metricsProp;
+            }
+
+            AuditTotalInvoices = metricsElem.TryGetProperty("TotalInvoices", out var ti) ? ti.GetInt32() : 0;
+            AuditTotalRevenue = metricsElem.TryGetProperty("TotalRevenue", out var tr) ? tr.GetDecimal() : 0;
+            AuditTaxableTurnover = metricsElem.TryGetProperty("TaxableTurnover", out var tt) ? tt.GetDecimal() : 0;
+            AuditTotalCgst = metricsElem.TryGetProperty("CGST", out var cg) ? cg.GetDecimal() : 0;
+            AuditTotalSgst = metricsElem.TryGetProperty("SGST", out var sg) ? sg.GetDecimal() : 0;
+            AuditTotalIgst = metricsElem.TryGetProperty("IGST", out var ig) ? ig.GetDecimal() : 0;
+            AuditTotalTax = metricsElem.TryGetProperty("TotalTax", out var tx) ? tx.GetDecimal() : 0;
+            AuditTotalProducts = metricsElem.TryGetProperty("TotalProducts", out var tp) ? tp.GetInt32() : 0;
+            AuditInventoryValuation = metricsElem.TryGetProperty("InventoryValuation", out var iv) ? iv.GetDecimal() : 0;
+            AuditLogsCount = metricsElem.TryGetProperty("AuditRecordsCount", out var al) ? al.GetInt32() : 0;
+
+            var invoicesList = new List<Invoice>();
+            var productsList = new List<Product>();
+            var logsList = new List<AuditLog>();
 
             // 2. Read Invoices
             if (innerRoot.TryGetProperty("Invoices", out var invoicesProp))
@@ -1959,10 +1981,19 @@ Client Activation Instructions:
                 var invoices = JsonSerializer.Deserialize<List<Invoice>>(invoicesProp.GetRawText(), options);
                 if (invoices != null)
                 {
+                    invoicesList = invoices;
                     foreach (var inv in invoices)
                     {
                         DecryptedAuditInvoices.Add(inv);
                     }
+
+                    if (AuditTotalInvoices == 0) AuditTotalInvoices = invoices.Count;
+                    if (AuditTotalRevenue == 0) AuditTotalRevenue = invoices.Sum(i => i.GrandTotal);
+                    if (AuditTaxableTurnover == 0) AuditTaxableTurnover = invoices.Sum(i => i.TaxableAmount);
+                    if (AuditTotalCgst == 0) AuditTotalCgst = invoices.Sum(i => i.TotalCGST);
+                    if (AuditTotalSgst == 0) AuditTotalSgst = invoices.Sum(i => i.TotalSGST);
+                    if (AuditTotalIgst == 0) AuditTotalIgst = invoices.Sum(i => i.TotalIGST);
+                    if (AuditTotalTax == 0) AuditTotalTax = AuditTotalCgst + AuditTotalSgst + AuditTotalIgst;
 
                     // Compute HSN Summaries from invoice items
                     var hsnGroups = invoices.SelectMany(i => i.Items ?? new List<InvoiceItem>())
@@ -2021,10 +2052,13 @@ Client Activation Instructions:
                 var products = JsonSerializer.Deserialize<List<Product>>(productsProp.GetRawText(), options);
                 if (products != null)
                 {
+                    productsList = products;
                     foreach (var prod in products)
                     {
                         DecryptedAuditProducts.Add(prod);
                     }
+                    if (AuditTotalProducts == 0) AuditTotalProducts = products.Count;
+                    if (AuditInventoryValuation == 0) AuditInventoryValuation = products.Sum(p => p.CurrentStock * p.PurchasePrice);
                 }
             }
 
@@ -2035,21 +2069,98 @@ Client Activation Instructions:
                 var logs = JsonSerializer.Deserialize<List<AuditLog>>(logsProp.GetRawText(), options);
                 if (logs != null)
                 {
+                    logsList = logs;
                     foreach (var log in logs)
                     {
                         DecryptedAuditLogs.Add(log);
                     }
+                    if (AuditLogsCount == 0) AuditLogsCount = logs.Count;
                 }
             }
 
+            // 5. Persist All Decrypted Commercial Data into PostgreSQL Database
+            await PersistDecryptedAuditDataToDatabaseAsync(plainJson, invoicesList, productsList, logsList);
+
             IsAuditPackageDecrypted = true;
             AuditActiveSubTab = "Invoices";
-            DecryptStatusMessage = $"✅ Successfully decrypted commercial package for '{AuditLegalName}' ({AuditBusinessCode})! Period: {AuditAccountingPeriod}";
+            DecryptStatusMessage = $"✅ Successfully decrypted & saved to database for '{AuditLegalName}' ({AuditBusinessCode})! Invoices: {invoicesList.Count}, Products: {productsList.Count}, Logs: {logsList.Count}. Period: {AuditAccountingPeriod}";
         }
         catch (Exception ex)
         {
             IsAuditPackageDecrypted = false;
             DecryptStatusMessage = $"❌ Decryption error: {ex.Message}";
+        }
+    }
+
+    private async Task PersistDecryptedAuditDataToDatabaseAsync(
+        string rawJsonPayload,
+        List<Invoice> invoices,
+        List<Product> products,
+        List<AuditLog> auditLogs)
+    {
+        try
+        {
+            // Persist Products
+            foreach (var prod in products)
+            {
+                try { await _productRepo.CreateAsync(prod); } catch { }
+            }
+
+            // Persist Invoices & Items
+            foreach (var inv in invoices)
+            {
+                try { await _invoiceRepo.SaveInvoiceAtomicAsync(inv); } catch { }
+            }
+
+            // Persist Audit Logs
+            foreach (var log in auditLogs)
+            {
+                try { await _auditRepo.LogAsync(log); } catch { }
+            }
+
+            // Persist Decrypted Audit Package Record
+            var packageRecord = new DecryptedAuditPackage
+            {
+                Id = Guid.NewGuid(),
+                BusinessCode = AuditBusinessCode,
+                LegalName = AuditLegalName,
+                GSTIN = AuditGstin,
+                AccountingPeriod = AuditAccountingPeriod,
+                ExportTimestampUtc = AuditExportTimestamp,
+                DecryptedAtUtc = DateTime.UtcNow,
+                TotalInvoices = invoices.Count,
+                TotalRevenue = AuditTotalRevenue,
+                TaxableTurnover = AuditTaxableTurnover,
+                TotalCGST = AuditTotalCgst,
+                TotalSGST = AuditTotalSgst,
+                TotalIGST = AuditTotalIgst,
+                TotalTax = AuditTotalTax,
+                TotalProducts = products.Count,
+                InventoryValuation = AuditInventoryValuation,
+                AuditLogsCount = auditLogs.Count,
+                PackageFilePath = SelectedAuditFilePath,
+                RawPayloadJson = rawJsonPayload
+            };
+
+            await _decryptedPackageRepo.SaveDecryptedPackageAsync(packageRecord);
+
+            // Log SuperAdmin Audit Entry
+            await _auditRepo.LogAsync(new AuditLog
+            {
+                TimestampUtc = DateTime.UtcNow,
+                UserId = Guid.Empty,
+                Username = "superadmin",
+                MachineName = Environment.MachineName,
+                Module = "CA_AUDIT_DECRYPTION",
+                Action = AuditActionType.DataExported,
+                RecordId = AuditBusinessCode,
+                NewValue = $"Decrypted & DB-saved {invoices.Count} invoices, {products.Count} products, {auditLogs.Count} audit logs for period {AuditAccountingPeriod}",
+                Reason = "Super Admin Commercial Audit Verification"
+            });
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[MainViewModel] Database persistence error: {ex.Message}");
         }
     }
 

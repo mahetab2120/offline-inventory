@@ -276,25 +276,19 @@ public partial class MainViewModel : ObservableObject
     private decimal posGrandTotal = 0;
 
     public bool CanApplyDiscount => CurrentUser?.Role == UserRole.BusinessAdmin ||
-                                   CurrentUser?.Role == UserRole.SuperAdmin_CA ||
                                    (CurrentUser?.Permissions.HasFlag(SystemPermissions.ApplyDiscount) ?? false);
 
     public string DiscountPermissionStatusText => CanApplyDiscount
         ? "🟢 Discount Authorized (Business Admin)"
         : "🔒 Discount Locked (Business Admin Only)";
 
-    public bool CanAccessGstReports => CurrentUser?.Role == UserRole.SuperAdmin_CA ||
-                                       CurrentUser?.Role == UserRole.Auditor;
+    public bool CanAccessGstReports => false;
 
-    public bool CanAccessSuperAdminExport => CurrentUser?.Role == UserRole.SuperAdmin_CA ||
-                                             CurrentUser?.Role == UserRole.Auditor;
+    public bool CanAccessSuperAdminExport => CurrentUser?.Role == UserRole.BusinessAdmin;
 
-    public bool IsSuperAdmin => CurrentUser?.Role == UserRole.SuperAdmin_CA ||
-                                CurrentUser?.Role == UserRole.Auditor;
+    public bool IsSuperAdmin => false;
 
-    public string SuperAdminBadgeText => IsSuperAdmin
-        ? "🔐 Super Admin / CA Auditor"
-        : "🏢 Business Admin";
+    public string SuperAdminBadgeText => "🏢 Business Admin";
 
     partial void OnCurrentUserChanged(User? value)
     {
@@ -768,7 +762,7 @@ public partial class MainViewModel : ObservableObject
     private string userManagementMessage = string.Empty;
 
     public ObservableCollection<User> AllStoreUsers { get; } = new();
-    public ObservableCollection<UserRole> AvailableRoles { get; } = new(Enum.GetValues<UserRole>());
+    public ObservableCollection<UserRole> AvailableRoles { get; } = new(Enum.GetValues<UserRole>().Where(r => r != UserRole.SuperAdmin_CA));
 
     // --- Super Admin / CA Encrypted Data Export State ---
     [ObservableProperty]
@@ -1059,11 +1053,6 @@ Modules Enabled:  {string.Join(", ", payload.EnabledModules)}";
 
         try
         {
-            if (LoginUsername.Trim().Equals("superadmin", StringComparison.OrdinalIgnoreCase))
-            {
-                await EnsureDefaultSuperAdminExistsAsync();
-            }
-
             var (success, error, user) = await _authService.LoginAsync(LoginUsername, LoginPassword);
             if (!success || user == null)
             {
@@ -1080,36 +1069,6 @@ Modules Enabled:  {string.Join(", ", payload.EnabledModules)}";
         catch (Exception ex)
         {
             LoginErrorMessage = $"Login error: {ex.Message}";
-        }
-    }
-
-    private async Task EnsureDefaultSuperAdminExistsAsync()
-    {
-        try
-        {
-            var existingSuper = await _userRepo.GetByUsernameAsync("superadmin");
-            if (existingSuper == null)
-            {
-                var (hash, salt) = _hasher.HashPassword("SuperAdmin@2026!");
-                var superUser = new User
-                {
-                    Id = Guid.NewGuid(),
-                    Username = "superadmin",
-                    FullName = "Super Administrator / CA Auditor",
-                    PasswordHash = hash,
-                    Salt = salt,
-                    Role = UserRole.SuperAdmin_CA,
-                    Permissions = SystemPermissions.All,
-                    IsActive = true,
-                    CreatedAtUtc = DateTime.UtcNow
-                };
-
-                await _userRepo.CreateUserAsync(superUser);
-            }
-        }
-        catch
-        {
-            // Ignore if exists or during startup
         }
     }
 
@@ -1148,12 +1107,12 @@ Modules Enabled:  {string.Join(", ", payload.EnabledModules)}";
         {
             if (tabName == "Reports" && !CanAccessGstReports)
             {
-                PosStatusMessage = "🔒 Access Denied: GST Reports are restricted exclusively to Super Admin / CA Auditor.";
+                PosStatusMessage = "🔒 Access Denied: GST Reports are restricted exclusively to Super Admin.";
                 return;
             }
             if (tabName == "CaExport" && !CanAccessSuperAdminExport)
             {
-                PosStatusMessage = "🔒 Access Denied: Encrypted Data Export is restricted exclusively to Super Admin / CA Auditor.";
+                PosStatusMessage = "🔒 Access Denied: Encrypted Data Export is restricted exclusively to Business Admin.";
                 return;
             }
 
@@ -1175,7 +1134,6 @@ Modules Enabled:  {string.Join(", ", payload.EnabledModules)}";
     {
         try
         {
-            await EnsureDefaultSuperAdminExistsAsync();
             CurrentCompany = await _companyRepo.GetCompanyAsync();
             CurrentLicense = await _licenseRepo.GetCurrentLicenseAsync();
 
@@ -2832,10 +2790,16 @@ Modules Enabled:  {string.Join(", ", payload.EnabledModules)}";
     [RelayCommand]
     private void GenerateEncryptedCaPackage()
     {
+        if (CurrentUser?.Role != UserRole.BusinessAdmin)
+        {
+            CaExportStatusMessage = "🔒 Access Denied: Only Business Admin can encrypt files and send to Super Admin.";
+            return;
+        }
+
         var (_, _, periodLabel, _) = GetExportDateRange();
         ShowAsyncConfirmation(
             "Generate Encrypted Commercial Package for Super Admin",
-            $"Generate a cryptographically signed & AES-256-GCM encrypted package containing all invoices, GST tax registers, inventory valuation, and audit trail for period '{periodLabel}'?",
+            $"Generate a cryptographically signed & AES-256-GCM encrypted package containing all invoices, GST tax registers, inventory valuation, and audit trail for period '{periodLabel}' to send to Super Admin?",
             async () => await ExecuteGenerateCaPackageAsync(),
             "🔐 Generate Encrypted Package",
             "#2563EB");
@@ -2843,6 +2807,12 @@ Modules Enabled:  {string.Join(", ", payload.EnabledModules)}";
 
     private async Task ExecuteGenerateCaPackageAsync()
     {
+        if (CurrentUser?.Role != UserRole.BusinessAdmin)
+        {
+            CaExportStatusMessage = "🔒 Access Denied: Only Business Admin can encrypt files and send to Super Admin.";
+            return;
+        }
+
         try
         {
             var (startUtc, endUtc, periodLabel, fileTag) = GetExportDateRange();

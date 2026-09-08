@@ -52,3 +52,10 @@ public interface IInvoiceRepository
     Task<string> GetNextInvoiceNumberAsync(string prefix);
     Task<bool> SaveInvoiceAtomicAsync(Invoice invoice);
 }
+
+public interface IDecryptedAuditPackageRepository
+{
+    Task<bool> SaveDecryptedPackageAsync(DecryptedAuditPackage package);
+    Task<IEnumerable<DecryptedAuditPackage>> GetAllDecryptedPackagesAsync();
+}
+

@@ -243,4 +243,49 @@ public class ProvisioningAndLicensingTests
         verifiedPayload!.BusinessCode.Should().Be("BUS-2026-999");
         verifiedPayload.Plan.Should().Be(SubscriptionTier.Enterprise);
     }
+
+    [Fact]
+    public async Task DecryptedAuditPackage_PersistenceAndRetrieval_ShouldSucceed()
+    {
+        var packageRepo = new LocalDecryptedAuditPackageRepository();
+        var package = new Domain.Entities.DecryptedAuditPackage
+        {
+            Id = Guid.NewGuid(),
+            BusinessCode = "BUS-2026-001",
+            LegalName = "Apex Retail Supermarket Ltd",
+            GSTIN = "27AABCA1234F1Z9",
+            AccountingPeriod = "May 2026",
+            ExportTimestampUtc = DateTime.UtcNow,
+            DecryptedAtUtc = DateTime.UtcNow,
+            TotalInvoices = 25,
+            TotalRevenue = 150000m,
+            TaxableTurnover = 127118.64m,
+            TotalCGST = 11440.68m,
+            TotalSGST = 11440.68m,
+            TotalTax = 22881.36m,
+            TotalProducts = 50,
+            InventoryValuation = 500000m,
+            AuditLogsCount = 10,
+            PackageFilePath = "D:\\Exports\\test.afspkg"
+        };
+
+        bool saved = await packageRepo.SaveDecryptedPackageAsync(package);
+        saved.Should().BeTrue();
+
+        var packages = (await packageRepo.GetAllDecryptedPackagesAsync()).ToList();
+        packages.Should().HaveCount(1);
+        packages[0].BusinessCode.Should().Be("BUS-2026-001");
+        packages[0].TotalInvoices.Should().Be(25);
+        packages[0].TotalRevenue.Should().Be(150000m);
+    }
+
+    [Fact]
+    public void DesktopApp_AvailableRoles_ShouldNotContainSuperAdminCA()
+    {
+        var availableRoles = Enum.GetValues<UserRole>().Where(r => r != UserRole.SuperAdmin_CA).ToList();
+        availableRoles.Should().NotContain(UserRole.SuperAdmin_CA);
+        availableRoles.Should().Contain(UserRole.BusinessAdmin);
+        availableRoles.Should().Contain(UserRole.StoreManager);
+        availableRoles.Should().Contain(UserRole.Cashier);
+    }
 }

@@ -42,6 +42,7 @@ public static class DependencyInjection
             services.AddSingleton<IAuditLogRepository, PostgresAuditLogRepository>();
             services.AddSingleton<IProductRepository, PostgresProductRepository>();
             services.AddSingleton<IInvoiceRepository, PostgresInvoiceRepository>();
+            services.AddSingleton<IDecryptedAuditPackageRepository, PostgresDecryptedAuditPackageRepository>();
         }
         else
         {
@@ -52,6 +53,7 @@ public static class DependencyInjection
             services.AddSingleton<IAuditLogRepository, LocalAuditLogRepository>();
             services.AddSingleton<IProductRepository, LocalProductRepository>();
             services.AddSingleton<IInvoiceRepository, LocalInvoiceRepository>();
+            services.AddSingleton<IDecryptedAuditPackageRepository, LocalDecryptedAuditPackageRepository>();
         }
 
         // Application Services

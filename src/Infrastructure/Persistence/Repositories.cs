@@ -16,6 +16,7 @@ public class InMemoryDataStore
     public ConcurrentBag<AuditLog> AuditLogs { get; } = new();
     public ConcurrentDictionary<Guid, Product> Products { get; } = new();
     public ConcurrentDictionary<Guid, Invoice> Invoices { get; } = new();
+    public ConcurrentDictionary<Guid, DecryptedAuditPackage> DecryptedPackages { get; } = new();
     private long _auditCounter = 1;
     private long _invoiceCounter = 1;
 
@@ -208,5 +209,22 @@ public class LocalInvoiceRepository : IInvoiceRepository
     {
         _store.Invoices[invoice.Id] = invoice;
         return Task.FromResult(true);
+    }
+}
+
+public class LocalDecryptedAuditPackageRepository : IDecryptedAuditPackageRepository
+{
+    private readonly InMemoryDataStore _store = InMemoryDataStore.Instance;
+
+    public Task<bool> SaveDecryptedPackageAsync(DecryptedAuditPackage package)
+    {
+        _store.DecryptedPackages[package.Id] = package;
+        return Task.FromResult(true);
+    }
+
+    public Task<IEnumerable<DecryptedAuditPackage>> GetAllDecryptedPackagesAsync()
+    {
+        var list = _store.DecryptedPackages.Values.OrderByDescending(p => p.DecryptedAtUtc).ToList();
+        return Task.FromResult<IEnumerable<DecryptedAuditPackage>>(list);
     }
 }

@@ -485,12 +485,37 @@ public class PostgresInvoiceRepository : IInvoiceRepository
                     @TaxableAmount, @TotalCGST, @TotalSGST, @TotalIGST, @TotalCess,
                     @RoundOff, @GrandTotal, @PaymentMethod, @AmountPaid, @ChangeDue,
                     @Status, @CashierUserId, @CashierUsername, @Notes
-                );";
+                )
+                ON CONFLICT (invoice_number) DO UPDATE SET
+                    invoice_date_utc = EXCLUDED.invoice_date_utc,
+                    customer_id = EXCLUDED.customer_id,
+                    customer_name = EXCLUDED.customer_name,
+                    customer_phone = EXCLUDED.customer_phone,
+                    customer_gstin = EXCLUDED.customer_gstin,
+                    sub_total = EXCLUDED.sub_total,
+                    total_discount = EXCLUDED.total_discount,
+                    taxable_amount = EXCLUDED.taxable_amount,
+                    total_cgst = EXCLUDED.total_cgst,
+                    total_sgst = EXCLUDED.total_sgst,
+                    total_igst = EXCLUDED.total_igst,
+                    total_cess = EXCLUDED.total_cess,
+                    round_off = EXCLUDED.round_off,
+                    grand_total = EXCLUDED.grand_total,
+                    payment_method = EXCLUDED.payment_method,
+                    amount_paid = EXCLUDED.amount_paid,
+                    change_due = EXCLUDED.change_due,
+                    status = EXCLUDED.status,
+                    cashier_user_id = EXCLUDED.cashier_user_id,
+                    cashier_username = EXCLUDED.cashier_username,
+                    notes = EXCLUDED.notes;";
 
             await conn.ExecuteAsync(invSql, invoice, trans);
 
             if (invoice.Items != null && invoice.Items.Count > 0)
             {
+                // Delete existing line items for idempotency during re-import
+                await conn.ExecuteAsync("DELETE FROM invoice_items WHERE invoice_id = @InvoiceId;", new { InvoiceId = invoice.Id }, trans);
+
                 const string itemSql = @"
                     INSERT INTO invoice_items (
                         id, invoice_id, product_id, product_name, sku, hsn_code,
@@ -505,6 +530,7 @@ public class PostgresInvoiceRepository : IInvoiceRepository
                 foreach (var item in invoice.Items)
                 {
                     item.InvoiceId = invoice.Id;
+                    if (item.Id == Guid.Empty) item.Id = Guid.NewGuid();
                     await conn.ExecuteAsync(itemSql, item, trans);
                 }
             }
@@ -517,5 +543,70 @@ public class PostgresInvoiceRepository : IInvoiceRepository
             trans.Rollback();
             throw;
         }
+    }
+}
+
+public class PostgresDecryptedAuditPackageRepository : IDecryptedAuditPackageRepository
+{
+    private readonly IDbConnectionFactory _factory;
+
+    public PostgresDecryptedAuditPackageRepository(IDbConnectionFactory factory)
+    {
+        _factory = factory;
+    }
+
+    public async Task<bool> SaveDecryptedPackageAsync(DecryptedAuditPackage package)
+    {
+        using var conn = _factory.CreateConnection();
+        const string sql = @"
+            INSERT INTO decrypted_audit_packages (
+                id, business_code, legal_name, gstin, accounting_period,
+                export_timestamp_utc, decrypted_at_utc, total_invoices, total_revenue,
+                taxable_turnover, total_cgst, total_sgst, total_igst, total_tax,
+                total_products, inventory_valuation, audit_logs_count, package_file_path, raw_payload_json
+            ) VALUES (
+                @Id, @BusinessCode, @LegalName, @GSTIN, @AccountingPeriod,
+                @ExportTimestampUtc, @DecryptedAtUtc, @TotalInvoices, @TotalRevenue,
+                @TaxableTurnover, @TotalCGST, @TotalSGST, @TotalIGST, @TotalTax,
+                @TotalProducts, @InventoryValuation, @AuditLogsCount, @PackageFilePath, @RawPayloadJson
+            )
+            ON CONFLICT (id) DO UPDATE SET
+                business_code = EXCLUDED.business_code,
+                legal_name = EXCLUDED.legal_name,
+                gstin = EXCLUDED.gstin,
+                accounting_period = EXCLUDED.accounting_period,
+                export_timestamp_utc = EXCLUDED.export_timestamp_utc,
+                decrypted_at_utc = EXCLUDED.decrypted_at_utc,
+                total_invoices = EXCLUDED.total_invoices,
+                total_revenue = EXCLUDED.total_revenue,
+                taxable_turnover = EXCLUDED.taxable_turnover,
+                total_cgst = EXCLUDED.total_cgst,
+                total_sgst = EXCLUDED.total_sgst,
+                total_igst = EXCLUDED.total_igst,
+                total_tax = EXCLUDED.total_tax,
+                total_products = EXCLUDED.total_products,
+                inventory_valuation = EXCLUDED.inventory_valuation,
+                audit_logs_count = EXCLUDED.audit_logs_count,
+                package_file_path = EXCLUDED.package_file_path,
+                raw_payload_json = EXCLUDED.raw_payload_json;";
+        int rows = await conn.ExecuteAsync(sql, package);
+        return rows > 0;
+    }
+
+    public async Task<IEnumerable<DecryptedAuditPackage>> GetAllDecryptedPackagesAsync()
+    {
+        using var conn = _factory.CreateConnection();
+        const string sql = @"
+            SELECT id, business_code AS BusinessCode, legal_name AS LegalName, gstin AS GSTIN,
+                   accounting_period AS AccountingPeriod, export_timestamp_utc AS ExportTimestampUtc,
+                   decrypted_at_utc AS DecryptedAtUtc, total_invoices AS TotalInvoices,
+                   total_revenue AS TotalRevenue, taxable_turnover AS TaxableTurnover,
+                   total_cgst AS TotalCGST, total_sgst AS TotalSGST, total_igst AS TotalIGST,
+                   total_tax AS TotalTax, total_products AS TotalProducts,
+                   inventory_valuation AS InventoryValuation, audit_logs_count AS AuditLogsCount,
+                   package_file_path AS PackageFilePath, raw_payload_json AS RawPayloadJson
+            FROM decrypted_audit_packages
+            ORDER BY decrypted_at_utc DESC;";
+        return await conn.QueryAsync<DecryptedAuditPackage>(sql);
     }
 }
