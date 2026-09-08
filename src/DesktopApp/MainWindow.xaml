@@ -15,6 +15,25 @@
         <vm:MainViewModel/>
     </Window.DataContext>
 
+    <Window.InputBindings>
+        <!-- Function Keys F1 - F12 Shortcuts & Hotkeys -->
+        <KeyBinding Key="F1" Command="{Binding ShortcutF1PosCommand}"/>
+        <KeyBinding Key="F2" Command="{Binding ShortcutF2InventoryCommand}"/>
+        <KeyBinding Key="F3" Command="{Binding ShortcutF3NewProductCommand}"/>
+        <KeyBinding Key="F4" Command="{Binding ShortcutF4PayCommand}"/>
+        <KeyBinding Key="F5" Command="{Binding ShortcutF5NewBillCommand}"/>
+        <KeyBinding Key="F6" Command="{Binding ShortcutF6PharmacyCommand}"/>
+        <KeyBinding Key="F7" Command="{Binding ShortcutF7DiscountCommand}"/>
+        <KeyBinding Key="F8" Command="{Binding ShortcutF8HistoryCommand}"/>
+        <KeyBinding Key="F9" Command="{Binding ShortcutF9ReprintCommand}"/>
+        <KeyBinding Key="F10" Command="{Binding ShortcutF10CategoriesCommand}"/>
+        <KeyBinding Key="F11" Command="{Binding ShortcutF11HoldBillCommand}"/>
+        <KeyBinding Key="F12" Command="{Binding ShortcutF12RecallBillCommand}"/>
+        <KeyBinding Key="Esc" Command="{Binding ShortcutEscapeCommand}"/>
+        <KeyBinding Key="P" Modifiers="Ctrl" Command="{Binding ShortcutF9ReprintCommand}"/>
+        <KeyBinding Key="N" Modifiers="Ctrl" Command="{Binding ShortcutF5NewBillCommand}"/>
+    </Window.InputBindings>
+
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis"/>
     </Window.Resources>
@@ -183,6 +202,7 @@
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
             <!-- Top Header & Navigation Bar -->
@@ -986,14 +1006,23 @@
                                       RowHeight="40">
                                 <DataGrid.Columns>
                                     <DataGridTextColumn Header="NAME" Binding="{Binding Name}" Width="*"/>
-                                    <DataGridTextColumn Header="ITEM CODE / SKU" Binding="{Binding SKU}" Width="110"/>
-                                    <DataGridTextColumn Header="BARCODE" Binding="{Binding Barcode}" Width="100"/>
-                                    <DataGridTextColumn Header="HSN" Binding="{Binding HSNCode}" Width="75"/>
-                                    <DataGridTextColumn Header="BUY RATE" Binding="{Binding PurchasePrice, StringFormat='₹{0:N2}'}" Width="85"/>
-                                    <DataGridTextColumn Header="SELL RATE" Binding="{Binding SellingPrice, StringFormat='₹{0:N2}'}" Width="85"/>
-                                    <DataGridTextColumn Header="GST" Binding="{Binding GSTRate, StringFormat='{}{0}%'}" Width="55"/>
-                                    <DataGridTextColumn Header="STOCK" Binding="{Binding CurrentStock}" Width="65"/>
-                                    <DataGridTemplateColumn Header="STOCK CONTROLS" Width="140">
+                                    <DataGridTemplateColumn Header="CATEGORY" Width="135">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <Border Background="#1E293B" BorderBrush="#334155" BorderThickness="1" CornerRadius="4" Padding="6,2" HorizontalAlignment="Left" VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding CategoryName, TargetNullValue='General'}" Foreground="#38BDF8" FontSize="11" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                                                </Border>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+                                    <DataGridTextColumn Header="ITEM CODE / SKU" Binding="{Binding SKU}" Width="105"/>
+                                    <DataGridTextColumn Header="BARCODE" Binding="{Binding Barcode}" Width="95"/>
+                                    <DataGridTextColumn Header="HSN" Binding="{Binding HSNCode}" Width="65"/>
+                                    <DataGridTextColumn Header="BUY RATE" Binding="{Binding PurchasePrice, StringFormat='₹{0:N2}'}" Width="80"/>
+                                    <DataGridTextColumn Header="SELL RATE" Binding="{Binding SellingPrice, StringFormat='₹{0:N2}'}" Width="80"/>
+                                    <DataGridTextColumn Header="GST" Binding="{Binding GSTRate, StringFormat='{}{0}%'}" Width="50"/>
+                                    <DataGridTextColumn Header="STOCK" Binding="{Binding CurrentStock}" Width="60"/>
+                                    <DataGridTemplateColumn Header="STOCK CONTROLS" Width="130">
                                         <DataGridTemplateColumn.CellTemplate>
                                             <DataTemplate>
                                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
@@ -1013,12 +1042,12 @@
                             <StackPanel>
                                 <TextBlock Text="➕ ADD NEW PRODUCT / MEDICINE" Foreground="{StaticResource AccentCyanBrush}" FontSize="15" FontWeight="Bold" Margin="0,0,0,14"/>
 
-                                <!-- Category Dropdown -->
+                                <!-- Category Dropdown & Direct Entry -->
                                 <Grid Margin="0,0,0,3">
                                     <TextBlock Text="Product Category *" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                     <Button Content="⚙️ Manage / Switch Preset" Background="Transparent" Foreground="{StaticResource AccentCyanBrush}" BorderThickness="0" Padding="4,0" FontSize="10" FontWeight="Bold" HorizontalAlignment="Right" Cursor="Hand" Command="{Binding OpenManageCategoriesModalCommand}"/>
                                 </Grid>
-                                <ComboBox ItemsSource="{Binding AvailableCategories}" SelectedItem="{Binding SelectedCategory}" Style="{StaticResource ModernComboBox}" Height="38" FontSize="12" Margin="0,0,0,10" ToolTip="{Binding SelectedCategory}"/>
+                                <ComboBox ItemsSource="{Binding AvailableCategories}" SelectedItem="{Binding SelectedCategory}" Text="{Binding SelectedCategory, UpdateSourceTrigger=PropertyChanged}" IsEditable="True" Style="{StaticResource ModernComboBox}" Height="38" FontSize="12" Margin="0,0,0,10" ToolTip="Select an existing category or type a custom one directly"/>
 
                                 <!-- Product Name -->
                                 <TextBlock Text="Product / Medicine Name *" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,3"/>
@@ -2766,6 +2795,162 @@
                     </ScrollViewer>
                 </Border>
             </Grid>
+
+            <!-- ========================================================================= -->
+            <!-- BOTTOM PERSISTENT FUNCTION KEY SHORTCUT TOOLBAR RIBBON (F1 - F12, ESC)    -->
+            <!-- ========================================================================= -->
+            <Border Grid.Row="2" Background="#0B0F17" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0" Padding="14,8">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Shortcut Key Badges / Action Buttons -->
+                    <ScrollViewer Grid.Column="0" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <!-- F1 POS -->
+                            <Button Style="{StaticResource PrimaryButton}" Background="#1E293B" Foreground="White" BorderBrush="#334155" BorderThickness="1" Height="34" Padding="10,0" Margin="0,0,6,0" Command="{Binding ShortcutF1PosCommand}" ToolTip="[F1] Switch to POS Quick Billing Terminal">
+                                <StackPanel Orientation="Horizontal">
+                                    <Border Background="#2563EB" CornerRadius="4" Padding="5,1" Margin="0,0,6,0">
+                                        <TextBlock Text="F1" Foreground="White" FontSize="11" FontWeight="Bold"/>
+                                    </Border>
+                                    <TextBlock Text="🛒 POS Billing" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+
+                            <!-- F2 Stock -->
+                            <Button Style="{StaticResource PrimaryButton}" Background="#1E293B" Foreground="White" BorderBrush="#334155" BorderThickness="1" Height="34" Padding="10,0" Margin="0,0,6,0" Command="{Binding ShortcutF2InventoryCommand}" ToolTip="[F2] Switch to Store Inventory &amp; Stock Catalog">
+                                <StackPanel Orientation="Horizontal">
+                                    <Border Background="#0D9488" CornerRadius="4" Padding="5,1" Margin="0,0,6,0">
+                                        <TextBlock Text="F2" Foreground="White" FontSize="11" FontWeight="Bold"/>
+                                    </Border>
+                                    <TextBlock Text="📦 Inventory" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+
+                            <!-- F3 Add Item -->
+                            <Button Style="{StaticResource PrimaryButton}" Background="#1E293B" Foreground="White" BorderBrush="#334155" BorderThickness="1" Height="34" Padding="10,0" Margin="0,0,6,0" Command="{Binding ShortcutF3NewProductCommand}" ToolTip="[F3] Add New Product / Medicine to Inventory">
+                                <StackPanel Orientation="Horizontal">
+                                    <Border Background="#0284C7" CornerRadius="4" Padding="5,1" Margin="0,0,6,0">
+                                        <TextBlock Text="F3" Foreground="White" FontSize="11" FontWeight="Bold"/>
+                                    </Border>
+                                    <TextBlock Text="➕ Add Product" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+
+                            <!-- F4 Settle / Pay -->
+                            <Button Style="{StaticResource PrimaryButton}" Background="#14532D" Foreground="#4ADE80" BorderBrush="#22C55E" BorderThickness="1" Height="34" Padding="10,0" Margin="0,0,6,0" Command="{Binding ShortcutF4PayCommand}" ToolTip="[F4] Settle Bill &amp; Open Print Preview">
+                                <StackPanel Orientation="Horizontal">
+                                    <Border Background="#16A34A" CornerRadius="4" Padding="5,1" Margin="0,0,6,0">
+                                        <TextBlock Text="F4" Foreground="White" FontSize="11" FontWeight="Bold"/>
+                                    </Border>
+                                    <TextBlock Text="💳 Settle / Pay" FontSize="11" FontWeight="Bold" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+
+                            <!-- F5 New Bill -->
+                            <Button Style="{StaticResource PrimaryButton}" Background="#1E293B" Foreground="White" BorderBrush="#334155" BorderThickness="1" Height="34" Padding="10,0" Margin="0,0,6,0" Command="{Binding ShortcutF5NewBillCommand}" ToolTip="[F5 / Ctrl+N] Clear Cart &amp; Start Fresh Bill">
+                                <StackPanel Orientation="Horizontal">
+                                    <Border Background="#7C3AED" CornerRadius="4" Padding="5,1" Margin="0,0,6,0">
+                                        <TextBlock Text="F5" Foreground="White" FontSize="11" FontWeight="Bold"/>
+                                    </Border>
+                                    <TextBlock Text="🔄 New Bill" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+
+                            <!-- F6 Pharmacy -->
+                            <Button Style="{StaticResource PrimaryButton}" Background="#1E293B" Foreground="White" BorderBrush="#334155" BorderThickness="1" Height="34" Padding="10,0" Margin="0,0,6,0" Command="{Binding ShortcutF6PharmacyCommand}" ToolTip="[F6] Switch to Pharmacy Batch Expiry Tracker">
+                                <StackPanel Orientation="Horizontal">
+                                    <Border Background="#D97706" CornerRadius="4" Padding="5,1" Margin="0,0,6,0">
+                                        <TextBlock Text="F6" Foreground="White" FontSize="11" FontWeight="Bold"/>
+                                    </Border>
+                                    <TextBlock Text="💊 Pharmacy" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+
+                            <!-- F7 Discount -->
+                            <Button Style="{StaticResource PrimaryButton}" Background="#1E293B" Foreground="White" BorderBrush="#334155" BorderThickness="1" Height="34" Padding="10,0" Margin="0,0,6,0" Command="{Binding ShortcutF7DiscountCommand}" ToolTip="[F7] Toggle Bill Discount Mode (Flat ₹ / % Percentage)">
+                                <StackPanel Orientation="Horizontal">
+                                    <Border Background="#EA580C" CornerRadius="4" Padding="5,1" Margin="0,0,6,0">
+                                        <TextBlock Text="F7" Foreground="White" FontSize="11" FontWeight="Bold"/>
+                                    </Border>
+                                    <TextBlock Text="🏷️ Discount" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+
+                            <!-- F8 Ledger -->
+                            <Button Style="{StaticResource PrimaryButton}" Background="#1E293B" Foreground="White" BorderBrush="#334155" BorderThickness="1" Height="34" Padding="10,0" Margin="0,0,6,0" Command="{Binding ShortcutF8HistoryCommand}" ToolTip="[F8] View Invoices &amp; Sales Ledger History">
+                                <StackPanel Orientation="Horizontal">
+                                    <Border Background="#4F46E5" CornerRadius="4" Padding="5,1" Margin="0,0,6,0">
+                                        <TextBlock Text="F8" Foreground="White" FontSize="11" FontWeight="Bold"/>
+                                    </Border>
+                                    <TextBlock Text="📑 Invoices" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+
+                            <!-- F9 Reprint -->
+                            <Button Style="{StaticResource PrimaryButton}" Background="#1E293B" Foreground="White" BorderBrush="#334155" BorderThickness="1" Height="34" Padding="10,0" Margin="0,0,6,0" Command="{Binding ShortcutF9ReprintCommand}" ToolTip="[F9 / Ctrl+P] Print or Reprint Last Invoice">
+                                <StackPanel Orientation="Horizontal">
+                                    <Border Background="#0891B2" CornerRadius="4" Padding="5,1" Margin="0,0,6,0">
+                                        <TextBlock Text="F9" Foreground="White" FontSize="11" FontWeight="Bold"/>
+                                    </Border>
+                                    <TextBlock Text="🖨️ Reprint" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+
+                            <!-- F10 Categories -->
+                            <Button Style="{StaticResource PrimaryButton}" Background="#1E293B" Foreground="White" BorderBrush="#334155" BorderThickness="1" Height="34" Padding="10,0" Margin="0,0,6,0" Command="{Binding ShortcutF10CategoriesCommand}" ToolTip="[F10] Manage Categories &amp; Industry Templates">
+                                <StackPanel Orientation="Horizontal">
+                                    <Border Background="#475569" CornerRadius="4" Padding="5,1" Margin="0,0,6,0">
+                                        <TextBlock Text="F10" Foreground="White" FontSize="11" FontWeight="Bold"/>
+                                    </Border>
+                                    <TextBlock Text="📁 Categories" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+
+                            <!-- F11 Hold Bill -->
+                            <Button Style="{StaticResource PrimaryButton}" Background="#3B2003" Foreground="#FDE047" BorderBrush="#CA8A04" BorderThickness="1" Height="34" Padding="10,0" Margin="0,0,6,0" Command="{Binding ShortcutF11HoldBillCommand}" ToolTip="[F11] Park / Hold Active Bill without Losing Cart Items">
+                                <StackPanel Orientation="Horizontal">
+                                    <Border Background="#D97706" CornerRadius="4" Padding="5,1" Margin="0,0,6,0">
+                                        <TextBlock Text="F11" Foreground="White" FontSize="11" FontWeight="Bold"/>
+                                    </Border>
+                                    <TextBlock Text="⏸️ Hold Bill" FontSize="11" FontWeight="Bold" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+
+                            <!-- F12 Recall Bill -->
+                            <Button Style="{StaticResource PrimaryButton}" Background="#064E3B" Foreground="#6EE7B7" BorderBrush="#059669" BorderThickness="1" Height="34" Padding="10,0" Margin="0,0,6,0" Command="{Binding ShortcutF12RecallBillCommand}" ToolTip="[F12] Recall Last Parked Bill from Hold Queue">
+                                <StackPanel Orientation="Horizontal">
+                                    <Border Background="#10B981" CornerRadius="4" Padding="5,1" Margin="0,0,6,0">
+                                        <TextBlock Text="F12" Foreground="White" FontSize="11" FontWeight="Bold"/>
+                                    </Border>
+                                    <TextBlock Text="{Binding ParkedBillsCount, StringFormat='⏯️ Recall ({0})'}" FontSize="11" FontWeight="Bold" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+
+                            <!-- Esc Cancel / Close -->
+                            <Button Style="{StaticResource PrimaryButton}" Background="#334155" Foreground="#CBD5E1" BorderBrush="#475569" BorderThickness="1" Height="34" Padding="10,0" Margin="0,0,4,0" Command="{Binding ShortcutEscapeCommand}" ToolTip="[Esc] Close Active Modal Dialog / Popup">
+                                <StackPanel Orientation="Horizontal">
+                                    <Border Background="#64748B" CornerRadius="4" Padding="5,1" Margin="0,0,6,0">
+                                        <TextBlock Text="Esc" Foreground="White" FontSize="11" FontWeight="Bold"/>
+                                    </Border>
+                                    <TextBlock Text="✕ Close" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+                    </ScrollViewer>
+
+                    <!-- Right Quick Status -->
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0,0,0">
+                        <Border Background="#1E293B" CornerRadius="6" Padding="10,4" BorderBrush="#334155" BorderThickness="1">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <TextBlock Text="⚡ Hotkeys Active" Foreground="{StaticResource AccentCyanBrush}" FontSize="11" FontWeight="Bold" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </Grid>
+            </Border>
         </Grid>
 
         <!-- ========================================================================= -->

@@ -136,6 +136,22 @@ public class WeeklySalesItem
     public string FormattedAmount => $"₹{SalesAmount:N0}";
 }
 
+public class ParkedBill
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public string ReferenceName { get; set; } = string.Empty;
+    public DateTime ParkedAt { get; set; } = DateTime.UtcNow;
+    public string CustomerName { get; set; } = "Walk-in Customer";
+    public string CustomerPhone { get; set; } = string.Empty;
+    public string CustomerGstin { get; set; } = string.Empty;
+    public decimal DiscountValue { get; set; }
+    public string DiscountType { get; set; } = "Flat";
+    public List<InvoiceItem> Items { get; set; } = new();
+    public decimal GrandTotal { get; set; }
+    public int TotalItemCount => Items.Sum(i => (int)i.Quantity);
+    public string DisplaySummary => $"{CustomerName} • {TotalItemCount} items • ₹{GrandTotal:N2} ({ParkedAt:HH:mm:ss})";
+}
+
 public partial class MainViewModel : ObservableObject
 {
     private readonly IProvisioningKeyService _keyService;
@@ -239,6 +255,10 @@ public partial class MainViewModel : ObservableObject
     public ObservableCollection<PharmacyBatchDisplayItem> ExpiringBatchesSummary { get; } = new();
     public ObservableCollection<WeeklySalesItem> WeeklySalesTrends { get; } = new();
     public ObservableCollection<CategoryDistributionItem> CategoryDistributions { get; } = new();
+    public ObservableCollection<ParkedBill> ParkedBills { get; } = new();
+
+    [ObservableProperty]
+    private int parkedBillsCount = 0;
 
     // --- POS Quick Billing Properties ---
     [ObservableProperty]
@@ -1322,6 +1342,23 @@ Modules Enabled:  {string.Join(", ", payload.EnabledModules)}";
         return cleaned.Trim().ToLowerInvariant();
     }
 
+    public static string FormatCategoryDisplay(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) return "General";
+        string cleaned = Regex.Replace(raw, @"[\p{Cs}\p{So}\p{Sk}\p{Sm}]", "");
+        cleaned = cleaned.Replace("🌟", "").Replace("💊", "").Replace("🧪", "").Replace("💉", "")
+                         .Replace("🩹", "").Replace("🧴", "").Replace("🍼", "").Replace("🌿", "")
+                         .Replace("🌾", "").Replace("🧂", "").Replace("🍪", "").Replace("🥛", "")
+                         .Replace("🧼", "").Replace("🥤", "").Replace("👔", "").Replace("👗", "")
+                         .Replace("👶", "").Replace("👟", "").Replace("🎒", "").Replace("📱", "")
+                         .Replace("🎧", "").Replace("🔌", "").Replace("🔋", "").Replace("💻", "")
+                         .Replace("📺", "").Replace("☕", "").Replace("🥪", "").Replace("🍕", "")
+                         .Replace("🍔", "").Replace("🍰", "").Replace("🥗", "").Replace("🍟", "")
+                         .Replace("🍬", "").Replace("🛒", "").Replace("📦", "");
+        cleaned = cleaned.Trim();
+        return string.IsNullOrWhiteSpace(cleaned) ? raw.Trim() : cleaned;
+    }
+
     private static bool IsCategoryMatch(string? productCategory, string? selectedCategory)
     {
         if (string.IsNullOrWhiteSpace(selectedCategory) || selectedCategory.Contains("All Categories"))
@@ -1971,6 +2008,21 @@ Modules Enabled:  {string.Join(", ", payload.EnabledModules)}";
             else if (SelectedGstSlab.StartsWith("28%")) gstRate = 28;
         }
 
+        string rawCat = SelectedCategory?.Trim() ?? string.Empty;
+        string cleanCategory = FormatCategoryDisplay(rawCat);
+        if (string.IsNullOrWhiteSpace(cleanCategory)) cleanCategory = "General";
+
+        // Auto-register custom/typed categories into MasterCategoryList & synchronize lists
+        if (!string.IsNullOrWhiteSpace(rawCat))
+        {
+            bool exists = MasterCategoryList.Any(c => CleanCategoryName(c) == CleanCategoryName(rawCat));
+            if (!exists)
+            {
+                MasterCategoryList.Add($"📦 {cleanCategory}");
+                SynchronizeCategoryLists();
+            }
+        }
+
         var product = new Product
         {
             Name = NewProductName.Trim(),
@@ -1978,7 +2030,7 @@ Modules Enabled:  {string.Join(", ", payload.EnabledModules)}";
             Barcode = barcode,
             HSNCode = hsn,
             Unit = unit,
-            CategoryName = SelectedCategory?.Replace("💊", "").Replace("🧪", "").Replace("💉", "").Replace("🩹", "").Replace("🧴", "").Replace("🍼", "").Replace("🛒", "").Replace("📦", "").Trim() ?? "General",
+            CategoryName = cleanCategory,
             PurchasePrice = NewPurchasePrice,
             SellingPrice = NewSellingPrice,
             MRP = NewMrp,
@@ -2198,7 +2250,10 @@ Modules Enabled:  {string.Join(", ", payload.EnabledModules)}";
 
         if (!AvailableCategories.Contains(SelectedCategory ?? string.Empty))
         {
-            SelectedCategory = AvailableCategories.FirstOrDefault() ?? "General";
+            if (string.IsNullOrWhiteSpace(SelectedCategory))
+            {
+                SelectedCategory = AvailableCategories.FirstOrDefault() ?? "General";
+            }
         }
 
         if (!PosCategories.Contains(SelectedPosCategory))
@@ -3177,6 +3232,211 @@ Signature Status:    Verified Authentic with AFS Master CA RSA Key";
         catch (Exception ex)
         {
             RenewalValidationMessage = $"Failed to save license to database: {ex.Message}";
+        }
+    }
+
+    // =========================================================================
+    // FUNCTION KEY SHORTCUT COMMANDS (F1 - F12, ESC, CTRL+P, CTRL+N)
+    // =========================================================================
+
+    [RelayCommand]
+    private void ShortcutF1Pos()
+    {
+        SwitchTab("Billing");
+        BillingSubTab = "NewSale";
+        PosStatusMessage = "🛒 Switched to POS Billing Terminal (F1)";
+    }
+
+    [RelayCommand]
+    private void ShortcutF2Inventory()
+    {
+        SwitchTab("Inventory");
+        InventoryFormMessage = "📦 Viewing Store Inventory & Stock Catalog (F2)";
+    }
+
+    [RelayCommand]
+    private void ShortcutF3NewProduct()
+    {
+        SwitchTab("Inventory");
+        InventoryFormMessage = "➕ Ready to Add New Product (F3) - Fill details in the form on the right";
+    }
+
+    [RelayCommand]
+    private async Task ShortcutF4Pay()
+    {
+        if (CurrentDashboardTab != "Billing")
+        {
+            SwitchTab("Billing");
+        }
+        await CheckoutAndPrintInvoice();
+    }
+
+    [RelayCommand]
+    private void ShortcutF5NewBill()
+    {
+        SwitchTab("Billing");
+        BillingSubTab = "NewSale";
+        ClearCart();
+        PosStatusMessage = "🔄 Started New POS Bill (F5) - Cart Reset";
+    }
+
+    [RelayCommand]
+    private void ShortcutF6Pharmacy()
+    {
+        SwitchTab("Pharmacy");
+    }
+
+    [RelayCommand]
+    private void ShortcutF7Discount()
+    {
+        if (CurrentDashboardTab != "Billing")
+        {
+            SwitchTab("Billing");
+        }
+
+        if (!CanApplyDiscount)
+        {
+            PosStatusMessage = "🔒 Discount is restricted to Business Admin role.";
+            return;
+        }
+
+        DiscountType = DiscountType == "Flat" ? "Percentage" : "Flat";
+        RecalculateCartTotals();
+        PosStatusMessage = $"🏷️ Switched Discount Mode to {(DiscountType == "Flat" ? "Flat ₹" : "Percentage %")} (F7)";
+    }
+
+    [RelayCommand]
+    private void ShortcutF8History()
+    {
+        SwitchTab("Billing");
+        SetBillingSubTab("History");
+        PosStatusMessage = "📑 Viewing Invoices & Sales Ledger History (F8)";
+    }
+
+    [RelayCommand]
+    private async Task ShortcutF9Reprint()
+    {
+        if (RecentInvoices.Any())
+        {
+            var lastInv = RecentInvoices.First();
+            await OpenPrintPreview(lastInv);
+            PosStatusMessage = $"🖨️ Opening Print Preview for Invoice #{lastInv.InvoiceNumber} (F9 / Ctrl+P)";
+        }
+        else
+        {
+            PosStatusMessage = "⚠️ No recent invoices found to reprint.";
+        }
+    }
+
+    [RelayCommand]
+    private void ShortcutF10Categories()
+    {
+        OpenManageCategoriesModal();
+    }
+
+    [RelayCommand]
+    private void ShortcutF11HoldBill()
+    {
+        if (CurrentDashboardTab != "Billing")
+        {
+            SwitchTab("Billing");
+        }
+
+        if (!PosCartItems.Any())
+        {
+            PosStatusMessage = "⚠️ Cannot hold an empty bill. Add items to cart first.";
+            return;
+        }
+
+        var parked = new ParkedBill
+        {
+            CustomerName = string.IsNullOrWhiteSpace(CustomerName) ? "Walk-in Customer" : CustomerName.Trim(),
+            CustomerPhone = CustomerPhone ?? string.Empty,
+            CustomerGstin = CustomerGstin ?? string.Empty,
+            DiscountValue = DiscountValue,
+            DiscountType = DiscountType,
+            GrandTotal = PosGrandTotal,
+            Items = PosCartItems.Select(i => new InvoiceItem
+            {
+                ProductId = i.ProductId,
+                ProductName = i.ProductName,
+                SKU = i.SKU,
+                HSNCode = i.HSNCode,
+                Quantity = i.Quantity,
+                UnitPrice = i.UnitPrice,
+                DiscountAmount = i.DiscountAmount,
+                TaxableValue = i.TaxableValue,
+                GSTRate = i.GSTRate,
+                CGSTAmount = i.CGSTAmount,
+                SGSTAmount = i.SGSTAmount,
+                TotalAmount = i.TotalAmount
+            }).ToList()
+        };
+
+        ParkedBills.Add(parked);
+        ParkedBillsCount = ParkedBills.Count;
+
+        ClearCart();
+        PosStatusMessage = $"⏸️ Bill for '{parked.CustomerName}' (₹{parked.GrandTotal:N2}) held & parked! [Total Parked: {ParkedBillsCount}] - Press F12 to Recall.";
+    }
+
+    [RelayCommand]
+    private void ShortcutF12RecallBill()
+    {
+        if (CurrentDashboardTab != "Billing")
+        {
+            SwitchTab("Billing");
+        }
+
+        if (!ParkedBills.Any())
+        {
+            PosStatusMessage = "ℹ️ No parked bills currently on hold.";
+            return;
+        }
+
+        var parked = ParkedBills.Last();
+        ParkedBills.Remove(parked);
+        ParkedBillsCount = ParkedBills.Count;
+
+        PosCartItems.Clear();
+        foreach (var item in parked.Items)
+        {
+            item.PropertyChanged += (s, e) =>
+            {
+                if (e.PropertyName == nameof(InvoiceItem.Quantity) || e.PropertyName == nameof(InvoiceItem.DiscountAmount))
+                {
+                    RecalculateCartTotals();
+                }
+            };
+            PosCartItems.Add(item);
+        }
+
+        CustomerName = parked.CustomerName;
+        CustomerPhone = parked.CustomerPhone;
+        CustomerGstin = parked.CustomerGstin;
+        DiscountValue = parked.DiscountValue;
+        DiscountType = parked.DiscountType;
+
+        RecalculateCartTotals();
+        PosStatusMessage = $"⏯️ Recalled parked bill for '{parked.CustomerName}' (₹{PosGrandTotal:N2})! [Remaining Parked: {ParkedBillsCount}]";
+    }
+
+    [RelayCommand]
+    private void ShortcutEscape()
+    {
+        bool anyClosed = IsCreateRackModalOpen || IsManageCategoriesModalOpen || IsStockControlModalOpen ||
+                          IsPrintPreviewModalOpen || IsLicenseRenewalModalOpen || IsConfirmModalOpen;
+
+        IsCreateRackModalOpen = false;
+        IsManageCategoriesModalOpen = false;
+        IsStockControlModalOpen = false;
+        IsPrintPreviewModalOpen = false;
+        IsLicenseRenewalModalOpen = false;
+        IsConfirmModalOpen = false;
+
+        if (anyClosed)
+        {
+            PosStatusMessage = "❌ Closed dialog/modal window (Esc).";
         }
     }
 }
