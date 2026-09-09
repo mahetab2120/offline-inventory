@@ -21,6 +21,24 @@ using Security.Services;
 
 namespace CAApplication.ViewModels;
 
+public class StringEqualsToBoolConverter : System.Windows.Data.IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
+    {
+        if (value == null || parameter == null) return false;
+        return string.Equals(value.ToString(), parameter.ToString(), StringComparison.OrdinalIgnoreCase);
+    }
+
+    public object ConvertBack(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
+    {
+        if (value is bool b && b && parameter != null)
+        {
+            return parameter.ToString()!;
+        }
+        return System.Windows.Data.Binding.DoNothing;
+    }
+}
+
 public class ClientDisplayItem : ObservableObject
 {
     private string _businessCode = string.Empty;
@@ -193,6 +211,22 @@ public partial class MainViewModel : ObservableObject
     // --- Navigation & Dashboard State ---
     [ObservableProperty]
     private string currentTab = "Dashboard"; // Dashboard, CreateClient, ClientDirectory, Renewals, DecryptAudit
+
+    partial void OnCurrentTabChanged(string value)
+    {
+        if (value == "Renewals")
+        {
+            if (SelectedRenewalClient == null && AllClients.Count > 0)
+            {
+                SelectedRenewalClient = AllClients.FirstOrDefault(c => c.DaysRemaining <= 14) ?? AllClients.First();
+            }
+            if (RenewalSelectedValidity == null && ValidityOptions.Count > 3)
+            {
+                RenewalSelectedValidity = ValidityOptions[3]; // +12 Months default
+            }
+            RecalculateRenewalExpiry();
+        }
+    }
 
     // Search & Filter in Client Directory / Dashboard
     [ObservableProperty]

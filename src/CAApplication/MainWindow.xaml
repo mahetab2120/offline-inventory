@@ -17,6 +17,7 @@
 
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+        <vm:StringEqualsToBoolConverter x:Key="StringEqualsConverter"/>
     </Window.Resources>
 
     <Grid>
@@ -50,7 +51,7 @@
 
                     <!-- Master Username Input -->
                     <TextBlock Text="Master Username" Foreground="{StaticResource TextSecondaryBrush}" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,6"/>
-                    <TextBox Text="{Binding LoginUsername, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ModernTextBox}" Height="48" FontSize="16" Margin="0,0,0,18"/>
+                    <TextBox Text="{Binding LoginUsername, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ModernTextBox}" Height="48" FontSize="16" Margin="0,0,0,18" KeyDown="LoginInput_KeyDown"/>
 
                     <!-- Master Password Input with Show/Hide Toggle -->
                     <TextBlock Text="Master Password" Foreground="{StaticResource TextSecondaryBrush}" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,6"/>
@@ -68,6 +69,7 @@
                                      FontSize="18"
                                      PasswordChar="●"
                                      PasswordChanged="MasterPasswordBox_PasswordChanged"
+                                     KeyDown="LoginInput_KeyDown"
                                      Visibility="{Binding IsPasswordMasked, Converter={StaticResource BoolToVis}}"/>
 
                         <!-- Plain Text Password Mode (When Show is active) -->
@@ -76,6 +78,7 @@
                                  Style="{StaticResource ModernTextBox}"
                                  Height="48"
                                  FontSize="16"
+                                 KeyDown="LoginInput_KeyDown"
                                  Visibility="{Binding IsPasswordVisible, Converter={StaticResource BoolToVis}}"/>
 
                         <!-- Show / Hide Button -->
@@ -96,7 +99,7 @@
                     <TextBlock Text="{Binding LoginErrorMessage}" Foreground="{StaticResource DangerRedBrush}" FontSize="13" Margin="0,0,0,16" TextWrapping="Wrap" FontWeight="SemiBold"/>
 
                     <!-- Sign In Button -->
-                    <Button Content="🔐 Authenticate &amp; Access AFS Portal" Style="{StaticResource PrimaryButton}" Height="50" FontSize="16" Command="{Binding PerformLoginCommand}" Margin="0,0,0,24"/>
+                    <Button Content="🔐 Authenticate &amp; Access AFS Portal" Style="{StaticResource PrimaryButton}" Height="50" FontSize="16" Command="{Binding PerformLoginCommand}" Margin="0,0,0,24" IsDefault="True"/>
 
                     <Border Background="#0F172A" CornerRadius="8" Padding="14">
                         <StackPanel>
@@ -153,13 +156,13 @@
                         <Button Content="🚪 Logout of AFS Portal" Style="{StaticResource DangerButton}" Height="42" FontSize="14" Command="{Binding LogoutCommand}"/>
                     </StackPanel>
 
-                    <!-- Navigation Buttons -->
+                    <!-- Navigation Tabs with Active Indicator -->
                     <StackPanel VerticalAlignment="Top">
-                        <Button Content="📊 Executive Dashboard" Margin="0,0,0,10" Style="{StaticResource PrimaryButton}" Height="46" HorizontalContentAlignment="Left" Command="{Binding SwitchTabCommand}" CommandParameter="Dashboard"/>
-                        <Button Content="🏢 Client Business Directory" Margin="0,0,0,10" Style="{StaticResource PrimaryButton}" Height="46" HorizontalContentAlignment="Left" Background="{StaticResource SurfaceCardBrush}" Command="{Binding SwitchTabCommand}" CommandParameter="ClientDirectory"/>
-                        <Button Content="➕ Create Client &amp; Issue Key" Margin="0,0,0,10" Style="{StaticResource PrimaryButton}" Height="46" HorizontalContentAlignment="Left" Background="{StaticResource SurfaceCardBrush}" Command="{Binding SwitchTabCommand}" CommandParameter="CreateClient"/>
-                        <Button Content="🔄 License Renewals (.lic)" Margin="0,0,0,10" Style="{StaticResource PrimaryButton}" Height="46" HorizontalContentAlignment="Left" Background="{StaticResource SurfaceCardBrush}" Command="{Binding SwitchTabCommand}" CommandParameter="Renewals"/>
-                        <Button Content="🔓 Decrypt Client Audit (.enc)" Margin="0,0,0,10" Style="{StaticResource PrimaryButton}" Height="46" HorizontalContentAlignment="Left" Background="{StaticResource SurfaceCardBrush}" Command="{Binding SwitchTabCommand}" CommandParameter="DecryptAudit"/>
+                        <RadioButton GroupName="SuperAdminNavTabs" Content="📊 Executive Dashboard" Style="{StaticResource ModernNavRadioButton}" Height="46" HorizontalContentAlignment="Left" IsChecked="{Binding CurrentTab, Converter={StaticResource StringEqualsConverter}, ConverterParameter=Dashboard, Mode=TwoWay}" Command="{Binding SwitchTabCommand}" CommandParameter="Dashboard"/>
+                        <RadioButton GroupName="SuperAdminNavTabs" Content="🏢 Client Business Directory" Style="{StaticResource ModernNavRadioButton}" Height="46" HorizontalContentAlignment="Left" IsChecked="{Binding CurrentTab, Converter={StaticResource StringEqualsConverter}, ConverterParameter=ClientDirectory, Mode=TwoWay}" Command="{Binding SwitchTabCommand}" CommandParameter="ClientDirectory"/>
+                        <RadioButton GroupName="SuperAdminNavTabs" Content="➕ Create Client &amp; Issue Key" Style="{StaticResource ModernNavRadioButton}" Height="46" HorizontalContentAlignment="Left" IsChecked="{Binding CurrentTab, Converter={StaticResource StringEqualsConverter}, ConverterParameter=CreateClient, Mode=TwoWay}" Command="{Binding SwitchTabCommand}" CommandParameter="CreateClient"/>
+                        <RadioButton GroupName="SuperAdminNavTabs" Content="🔄 License Renewals (.lic)" Style="{StaticResource ModernNavRadioButton}" Height="46" HorizontalContentAlignment="Left" IsChecked="{Binding CurrentTab, Converter={StaticResource StringEqualsConverter}, ConverterParameter=Renewals, Mode=TwoWay}" Command="{Binding SwitchTabCommand}" CommandParameter="Renewals"/>
+                        <RadioButton GroupName="SuperAdminNavTabs" Content="🔓 Decrypt Client Audit (.enc)" Style="{StaticResource ModernNavRadioButton}" Height="46" HorizontalContentAlignment="Left" IsChecked="{Binding CurrentTab, Converter={StaticResource StringEqualsConverter}, ConverterParameter=DecryptAudit, Mode=TwoWay}" Command="{Binding SwitchTabCommand}" CommandParameter="DecryptAudit"/>
                     </StackPanel>
                 </DockPanel>
             </Border>
